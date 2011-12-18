@@ -17,6 +17,7 @@ define(['lib/mootools', '/socket.io/socket.io.js'], function() {
 
   socket.on('login-valid', function(data) {
     log('Logged in as ' + data.name);
+
     $$('#send').addEvent('click', function() {
       socket.emit('message', {text: $$('#message').get('value')});
       log('You: ' + $$('#message').get('value'));
