@@ -1,13 +1,10 @@
-var express = require('express'),
-controllers = require('./controllers'),
+var express = require('express'), requirejs = require('requirejs'),
 app = module.exports = express.createServer(),
 sio = require('socket.io').listen(app),
 pg = require('pg'),
 Session = require('connect').middleware.session.Session,
 PGStore = require('connect-pg'), sessionStore,
 winston = require('winston');
-
-winston.add(winston.transports.File, { filename: 'somefile.log' });
 
 // PostgreSQL connection for session handler
 sessionStore = new PGStore(function(callback) {
@@ -41,49 +38,69 @@ app.configure(function(){
 
 // Configuration - per environment
 app.configure('development', function(){
+  var cliLogOptions = {level: 0, colorize: true, timestamp: true};
   app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+  winston.remove(winston.transports.Console);
+  winston.add(winston.transports.Console, cliLogOptions);
+  winston.loggers.add('Socket.IO', {console: cliLogOptions});
 });
 
 app.configure('production', function(){
+  var logOptions = {level: 'warn', colorize: false, timestamp: true};
   app.use(express.errorHandler());
-});
+  winston.remove(winston.transports.Console);
+  winston.add(winston.transports.Console, logOptions);
+  winston.loggers.add('Socket.IO', {console: logOptions, file: {
+    level: 2,
+    timestamp: true,
+    filename: 'SocketIO.log',
+    maxsize: 1024 * 100,
+    maxFiles: 3
+    }});
+  });
 
-// Socket.IO config
-sio.set('transports', [
-'websocket',
-'flashsocket',
-'htmlfile',
-'xhr-polling',
-'jsonp-polling'
-]);
-sio.configure('production', function(){
-  sio.enable('browser client minification');
-  sio.enable('browser client etag');
-  sio.enable('browser client gzip');
-  sio.set('log level', 1);
-});
+  // Socket.IO config
+  sio.configure(function() {
+    sio.set('logger', winston.loggers.get('Socket.IO'));
+    sio.set('transports', [
+    'websocket',
+    'flashsocket',
+    'htmlfile',
+    'xhr-polling',
+    'jsonp-polling'
+    ]);
+  });
 
-// Connect Socket.IO to session
-sio.set('authorization', function (data, accept) {
+  sio.configure('production', function(){
+    sio.enable('browser client minification');
+    sio.enable('browser client etag');
+    sio.enable('browser client gzip');
+  });
+
+  // Connect Socket.IO to session
+  sio.set('authorization', function (data, accept) {
     if (data.headers.cookie) {
-        data.cookie = require('connect').utils.parseCookie(data.headers.cookie);
-        data.sessionID = data.cookie['express.sid'];
-        data.sessionStore = sessionStore;
-        sessionStore.get(data.sessionID, function (err, session) {
-            if (err || !session) {
-                accept('Error', false);
-            } else {
-                data.session = new Session(data, session);
-                accept(null, true);
-            }
-        });
+      data.cookie = require('connect').utils.parseCookie(data.headers.cookie);
+      data.sessionID = data.cookie['express.sid'];
+      data.sessionStore = sessionStore;
+      sessionStore.get(data.sessionID, function (err, session) {
+        if (err || !session) {
+          accept('Error', false);
+        } else {
+          data.session = new Session(data, session);
+          accept(null, true);
+        }
+      });
     } else {
-       return accept('No cookie transmitted.', false);
+      return accept('No cookie transmitted.', false);
     }
-});
+ });
 
-// Routes
-require('./routes')(app, sio);
+ // Routes, application code entry points
+ requirejs.config({
+  nodeRequire: require
+});
+requirejs(['./routes'], function(initRoutes) { initRoutes(app, sio); });
 
 app.listen(8080);
-console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
+winston.info('express server listening');
