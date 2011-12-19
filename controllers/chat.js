@@ -1,4 +1,6 @@
 define(function() {
+  require('mootools');
+
   var users = {};
 
   function addSocket(name, socket)
@@ -7,13 +9,23 @@ define(function() {
     users[name].push(socket.id);
   }
 
-  function userSockets(name, anotherSocket)
+  function broadcast(sender, type, data, socket)
   {
-    var ret = [], i, store = anotherSocket.manager.store;
-    for (i in users[name]) {
-      ret.push(store.clients[users[name][i]]);
+    var  user, i;
+    for (user in users) {
+      if (user == sender) continue;
+      for (i in users[user]) {
+        socket.manager.sockets.socket( users[user][i] ).emit(type, data);
+      }
     }
-    return ret;
+  }
+
+  function emit(user, type, data, socket)
+  {
+    var i;
+    for (i in users[user]) {
+      socket.manager.sockets.socket( users[user][i] ).emit(type, data);
+    }
   }
 
   return {
@@ -24,30 +36,51 @@ define(function() {
     sio: {
       initialize: function(data, session, socket) {
         if (!session.name) {
-          socket.emit('input-name');
+          socket.emit('input-name', {cause: 'register', action: 'register'});
         } else {
-          socket.broadcast.emit('announce-login-other', {name: session.name});
-          socket.emit('announce-login-you', {name: session.name});
+          socket.emit('announce', {type: 'login', name: session.name, self: true});
+          if (!users[session.name])
+            broadcast(session.name, 'announce', {type: 'login', name: session.name, self: false}, socket);
+          addSocket(session.name, socket);
         }
       },
 
       register: function(data, session, socket) {
-        if (users.contains(data.name)) {
-          socket.emit('name-taken');
-          socket.emit('input-name');
-        } else if (!session.name) {
-          socket.broadcast.emit('announce-newuser', {name: data.name});
-          socket.emit('announce-login-you', {name: data.name});
+        if (!data.name || data.name.trim().length === 0) {
+          socket.emit('input-name', {cause: 'empty', action: 'register'});
+        } else if (users[data.name]) {
+          socket.emit('input-name', {cause: 'taken', action: 'register'});
+        } else if (session.name) {
+          socket.emit('error', {text: 'You\'re already registered'});
         } else {
-          socket.broadcast.emit('announce-rename-other', {oldName: session.name, newName: data.name});
-          socket.emit('announce-rename-you', {oldName: session.name, newName: data.name});
+          broadcast(session.name, 'announce', {type: 'login', name: data.name, self: false}, socket);
+          socket.emit('announce', {type: 'login', name: data.name, self: true});
+          addSocket(data.name, socket);
+          session.name = data.name;
         }
-        session.name = data.name;
+      },
+
+      rename: function(data, session, socket) {
+        var from = session.name, to = data.name;
+        if (!to) {
+          socket.emit('input-name', {cause: 'empty', action: 'rename'});
+        } else if (users[to]) {
+          socket.emit('input-name', {cause: 'taken', action: 'rename'});
+        } else {
+          broadcast(from, 'announce', {type: 'rename', from: from, to: to, self: false}, socket);
+          emit(from, 'announce', {type: 'rename', from: from, to: to, self: true}, socket);
+          session.name = to;
+          users.to = users.from;
+          delete users.from;
+        }
       },
 
       message: function(data, session, socket) {
-        data.name = session.name;
-        socket.broadcast.emit('message', data);
+        var other = {name: session.name, text: data.text},
+            you = {name: 'You', text: data.text};
+        broadcast(session.name, 'message', other, socket);
+        emit(session.name, 'message', you, socket);
+        this.logger.info(session.name + ' said: ' + data.text);
       }
     }
   };

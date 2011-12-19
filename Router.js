@@ -17,7 +17,7 @@ define(['./controllers/index'], function(controllers) {
       );
     } else {
       var url = opts.url || '/' + opts.controllerName + '/' + opts.actionName;
-      opts.app[opts.method](url, opts.wrapper(opts.controller[opts.method][opts.actionName]));
+      opts.app[opts.method](url, opts.wrapper(opts.controller[opts.method][opts.actionName]).bind(opts.controller));
       opts.logger.debug(
         format('Action(%s) %s.%s set up to handle URL %s',
         opts.method, opts.controllerName, opts.actionName, url)
@@ -108,6 +108,8 @@ define(['./controllers/index'], function(controllers) {
               bindOptions.actionName = actionName;
               bindHttpAction(bindOptions);
             }
+            // Add to the context of actions
+            bindOptions.controller.logger = this.options.logger;
           }
         }
       }
@@ -123,7 +125,9 @@ define(['./controllers/index'], function(controllers) {
             if (controller.sio) {
               for (actionName in controller.sio) {
                 if (actionName === 'initialize') continue;
-                socket.on(actionName, this.options.socketIOWrapper(socket, controller.sio[actionName]));
+                socket.on(actionName,
+                  this.options.socketIOWrapper(socket, controller.sio[actionName].bind(controller))
+                );
                 this.options.logger.debug(
                   format("%s.%s is listening for Socket.IO event %s",
                           controllerName, actionName, actionName)
@@ -131,8 +135,9 @@ define(['./controllers/index'], function(controllers) {
               }
 
               // Call initialize if present
+              controller.logger = this.options.logger;
               if (controller.sio.initialize) {
-                this.options.socketIOWrapper(socket, controller.sio.initialize)({});
+                this.options.socketIOWrapper(socket, controller.sio.initialize).call(this, {});
               }
             }
           }
