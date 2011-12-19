@@ -1,28 +1,48 @@
 define(function() {
+  var users = {};
+
+  function addSocket(name, socket)
+  {
+    if (!users[name]) users[name] = [];
+    users[name].push(socket.id);
+  }
+
+  function userSockets(name, anotherSocket)
+  {
+    var ret = [], i, store = anotherSocket.manager.store;
+    for (i in users[name]) {
+      ret.push(store.clients[users[name][i]]);
+    }
+    return ret;
+  }
+
   return {
     get: {
-      defaultController: 'index',
+      defaultAction: 'index',
       index: function(req, res) { res.render('chat'); }
     },
     sio: {
-      login: function(data, session, socket) {
-        if (typeof(session.name) == 'undefined') {
-          socket.emit('get-name');
+      initialize: function(data, session, socket) {
+        if (!session.name) {
+          socket.emit('input-name');
         } else {
-          socket.broadcast.emit('login', {name: session.name});
-          socket.emit('login-valid', {name: session.name});
+          socket.broadcast.emit('announce-login-other', {name: session.name});
+          socket.emit('announce-login-you', {name: session.name});
         }
       },
 
       register: function(data, session, socket) {
-        if (typeof(session.name) == 'undefined') {
-          socket.broadcast.emit('new-user', {name: data.name});
-          socket.emit('login-valid', {name: data.name});
+        if (users.contains(data.name)) {
+          socket.emit('name-taken');
+          socket.emit('input-name');
+        } else if (!session.name) {
+          socket.broadcast.emit('announce-newuser', {name: data.name});
+          socket.emit('announce-login-you', {name: data.name});
         } else {
-          socket.broadcast.emit('rename', {oldName: session.name, newName: data.name});
+          socket.broadcast.emit('announce-rename-other', {oldName: session.name, newName: data.name});
+          socket.emit('announce-rename-you', {oldName: session.name, newName: data.name});
         }
         session.name = data.name;
-        session.touch().save();
       },
 
       message: function(data, session, socket) {
