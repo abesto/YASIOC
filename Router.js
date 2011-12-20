@@ -2,7 +2,7 @@ define(['./controllers/index'], function(controllers) {
   require('mootools');
 
   var httpMethods = ['get', 'head', 'post', 'put', 'delete', 'options', 'trace', 'connect'],
-      format = require('util').format;
+  format = require('util').format;
 
 
   function bindHttpAction(opts)
@@ -48,15 +48,15 @@ define(['./controllers/index'], function(controllers) {
 
     initialize: function(options) { this.setOptions(options); },
 
-     // controllers is a hash of controllerName => httpMethod => actionName => function(res, req)
-     // Additionally the optional 'defaultAction' key of each httpMethod hash is special, it provides
-     // the action to call when none is provided explicitly.
-     //
-     // defaultControllers is an optional hash of httpMethod => controllerName
-     // This function creates the following bindings (by calling this.options.app[httpMethod]):
-     //   /                    -> The default action of the default controller
-     //   /:controller         -> The default action of controller
-     //   /:controller/:action -> Kinda obvious ;)
+    // controllers is a hash of controllerName => httpMethod => actionName => function(res, req)
+    // Additionally the optional 'defaultAction' key of each httpMethod hash is special, it provides
+    // the action to call when none is provided explicitly.
+    //
+    // defaultControllers is an optional hash of httpMethod => controllerName
+    // This function creates the following bindings (by calling this.options.app[httpMethod]):
+    //   /                    -> The default action of the default controller
+    //   /:controller         -> The default action of controller
+    //   /:controller/:action -> Kinda obvious ;)
     routeHttp: function(app, controllers, defaultControllers)
     {
       var method, controllerName, actionName,
@@ -73,7 +73,7 @@ define(['./controllers/index'], function(controllers) {
             // defaultAction property exists
             if (!bindOptions.controller[method].defaultAction) {
               this.options.logger.warn('Property defaultAction is missing from default controller "' +
-                                bindOptions.controllerName + '" of method "' + method + '"');
+              bindOptions.controllerName + '" of method "' + method + '"');
             } else {
               bindOptions.actionName = bindOptions.controller[method].defaultAction;
               bindOptions.url = '/';
@@ -117,32 +117,40 @@ define(['./controllers/index'], function(controllers) {
 
     routeSocketIO: function(socketIO, controllers)
     {
-      socketIO.sockets.on('connection',
-        (function (socket) {
-          var controllerName, actionName;
-          for (controllerName in controllers) {
-            controller = controllers[controllerName];
-            if (controller.sio) {
-              for (actionName in controller.sio) {
-                if (actionName === 'initialize') continue;
-                socket.on(actionName,
-                  this.options.socketIOWrapper(socket, controller.sio[actionName].bind(controller))
-                );
-                this.options.logger.debug(
-                  format("%s.%s is listening for Socket.IO event %s",
-                          controllerName, actionName, actionName)
-                );
-              }
+      var controllerName, controller, actionName;
 
-              // Call initialize if present
-              controller.logger = this.options.logger;
-              if (controller.sio.initialize) {
-                this.options.socketIOWrapper(socket, controller.sio.initialize).call(this, {});
-              }
-            }
-          }
-          }).bind(this)
-        );
+      function connectionHandler(socket)
+      {
+        var actionName;
+        // Bind each action as appropriate
+        for (actionName in this.controller.sio) {
+          if (actionName === 'initialize') continue;
+          socket.on(actionName,
+            this.options.socketIOWrapper(
+              socket,
+              this.controller.sio[actionName].bind(this.controller)
+            )
+          );
+        }
+         // Set up the environment for the action
+        this.controller.logger = this.options.logger;
+         // And call initialize if present
+        if (this.controller.sio.initialize) {
+          this.options.socketIOWrapper(socket, this.controller.sio.initialize).call(this.controller, {});
+        }
       }
-  });
-});
+      // EOF function connectionHandler
+       // For each controller
+      for (controllerName in controllers) {
+        controller = controllers[controllerName];
+        // That has methods for handling socketIO events
+        if (!controller.sio) continue;
+        // Listen on a namespace with the same name as the controller
+        socketIO.of('/' + controllerName).on('connection', connectionHandler.bind({
+          controller: controller,
+          options: this.options
+        })); // socketIO.of(...).on(...)
+      } // For each controller
+    } // routeSocketIO
+  }); // return new Class
+}); // define

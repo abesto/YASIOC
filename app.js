@@ -9,7 +9,7 @@ winston = require('winston');
 
 // PostgreSQL connection for session handler
 sessionStore = new PGStore(function(callback) {
-  pg.connect('tcp://nodepg:bideog@localhost/games',
+  pg.connect('tcp://nodepg:nodepg@localhost/games',
   function (err, client) {
     if (err) {
       console.log(JSON.stringify(err));
@@ -42,7 +42,7 @@ app.configure('development', function(){
   app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
   winston.remove(winston.transports.Console);
   winston.add(winston.transports.Console, {level: 0, colorize: true, timestamp: true});
-  winston.loggers.add('Socket.IO', {console: {level: 1, colorize: true, timestamp: true}});
+  winston.loggers.add('Socket.IO', {console: {level: 0, colorize: true, timestamp: true}});
 });
 
 app.configure('production', function(){
