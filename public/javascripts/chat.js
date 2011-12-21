@@ -1,6 +1,7 @@
 define(['lib/mootools', '/socket.io/socket.io.js'], function() {
   var socket = io.connect('http://localhost/chat'), name, inited = false;
 
+
   function log(msg)
   {
     $$('#log').grab((new Element('li').appendText(msg)));

@@ -1,4 +1,4 @@
-define(['./controllers/index'], function(controllers) {
+define(function() {
   require('mootools');
 
   var httpMethods = ['get', 'head', 'post', 'put', 'delete', 'options', 'trace', 'connect'],
@@ -43,7 +43,8 @@ define(['./controllers/index'], function(controllers) {
       // Wraps http action
       httpWrapper: function(f) { return f; },
       // Wraps socket.io actions, useful for eg. passing the Express session in
-      socketIOWrapper: function(handler, socket) { return handler; }
+      // The second parameter is the socket
+      socketIOWrapper: function(handler) { return handler; }
     },
 
     initialize: function(options) { this.setOptions(options); },
@@ -64,7 +65,8 @@ define(['./controllers/index'], function(controllers) {
       // Default controller, default action
       if (defaultControllers) {
         for (method in defaultControllers) {
-          if (method === 'sio') continue;  // sio "method" is handled separately in function routeSocketIO
+          if (!defaultControllers.hasOwnProperty(method) || method === 'sio')
+            continue;  // sio "method" is handled separately in function routeSocketIO
           // HTTP method is valid
           if (validHttpMethod(method, this.options.logger)) {
             bindOptions.method = method;
@@ -87,11 +89,13 @@ define(['./controllers/index'], function(controllers) {
       bindOptions = {app: app, wrapper: this.options.httpWrapper, logger: this.options.logger};
       // For each controller
       for (controllerName in controllers) {
+        if (!controllers.hasOwnProperty(controllerName)) continue;
         bindOptions.controllerName = controllerName;
         bindOptions.controller = controllers[controllerName];
         // For each HTTP method handled in the controller
         for (method in bindOptions.controller) {
-          if (method === 'sio') continue;  // sio "method" is handled separately in function routeSocketIO
+          if (!bindOptions.controller.hasOwnProperty(method) || method === 'sio')
+            continue;  // sio "method" is handled separately in function routeSocketIO
           // (but only valid methods of course)
           if (validHttpMethod(method, this.options.logger)) {
             bindOptions.method = method;
@@ -117,39 +121,38 @@ define(['./controllers/index'], function(controllers) {
 
     routeSocketIO: function(socketIO, controllers)
     {
-      var controllerName, controller, actionName;
-
-      function connectionHandler(socket)
+      function connectionHandler(wrapper, controller, logger)
       {
-        var actionName;
-        // Bind each action as appropriate
-        for (actionName in this.controller.sio) {
-          if (actionName === 'initialize') continue;
-          socket.on(actionName,
-            this.options.socketIOWrapper(
-              socket,
-              this.controller.sio[actionName].bind(this.controller)
-            )
-          );
-        }
-         // Set up the environment for the action
-        this.controller.logger = this.options.logger;
-         // And call initialize if present
-        if (this.controller.sio.initialize) {
-          this.options.socketIOWrapper(socket, this.controller.sio.initialize).call(this.controller, {});
-        }
+        return function(socket) {
+          var actionName;
+          // Bind each action as appropriate
+          for (actionName in this.controller.sio) {
+            if (!this.controller.sio.hasOwnProperty(actionName) || actionName === 'initialize') continue;
+            socket.on(actionName,
+              wrapper(socket, controller.sio[actionName].bind(controller)
+              )
+            );
+          }
+          // Set up the environment for the action
+          this.controller.logger = logger;
+          // And call initialize if present
+          if (controller.sio.initialize) {
+            wrapper(socket, controller.sio.initialize).call(controller, {});
+          }
+        };
       }
       // EOF function connectionHandler
-       // For each controller
-      for (controllerName in controllers) {
+
+      // For each controller
+      for (var controllerName in controllers) {
+        if (!controllers.hasOwnProperty(controllerName)) continue;
         controller = controllers[controllerName];
         // That has methods for handling socketIO events
         if (!controller.sio) continue;
         // Listen on a namespace with the same name as the controller
-        socketIO.of('/' + controllerName).on('connection', connectionHandler.bind({
-          controller: controller,
-          options: this.options
-        })); // socketIO.of(...).on(...)
+        socketIO.of('/' + controllerName).on('connection',
+          connectionHandler(this.options.socketIOWrapper, controller, this.options.logger)
+        );
       } // For each controller
     } // routeSocketIO
   }); // return new Class

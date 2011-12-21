@@ -1,14 +1,14 @@
 define(function() {
-  var ChatClient, logger;
+  var ChatClient;
 
   require('mootools');
 
   function userChannel(user) { return 'user-' + user; }
   function publicChannel(name) {
-    if (typeOf(name) === 'null') name = 'default';
-    return 'public-' + name;
+    return 'public-' + (typeOf(name) === 'null' ? 'default' : name);
   }
 
+  //noinspection JSUnusedAssignment
   ChatClient = new Class({
     initialize: function(session, socket) {
       this.socket = socket;
@@ -30,8 +30,7 @@ define(function() {
 
     // Send to all connections of a user. Defaults to this user.
     sendToUser: function(type, data, user) {
-      if (typeOf(user) === 'null') user = this.name;
-      this.socket.namespace['in']( userChannel(user) ).emit(type, data);
+      this.socket.namespace['in']( userChannel(typeOf(user) === 'null' ? this.name : user) ).emit(type, data);
     },
 
     // Send data to a channel, 'public' by default
@@ -43,9 +42,9 @@ define(function() {
     userList: function() {
       var ret = [], room, prefix='/chat/user-';
       for (room in this.socket.manager.rooms) {
+        if (!this.socket.manager.rooms.hasOwnProperty(room)) continue;
         if (room.substring(0,prefix.length) === prefix) ret.push(room.substring(prefix.length));
       }
-      console.log(ret);
       return ret;
     },
 
@@ -86,32 +85,38 @@ define(function() {
         var client = new ChatClient(session, socket);
         if (client.name) {
           client.respond('error', {text: 'You\'re already registered'});
-        } else if (typeOf(data.name) !== 'string' || (data.name = data.name.trim()).length === 0) {
+        } else if (typeOf(data.name) !== 'string' || data.name.trim().length === 0) {
           client.respond('input-name', {cause: 'empty', action: 'register'});
-        } else if (client.userList().contains(name)) {
-          client.respond('input-name', {cause: 'taken', action: 'register'});
         } else {
-          client.authorized(data.name);
-          socket.once('valid-login-ack', function() {
-            client.sendToChannel('announce', {type: 'login', name: client.name});
-          });
-          client.sendToUser('valid-login', {name: client.name});
+          var name = data.name.trim();
+          if (client.userList().contains(name)) {
+            client.respond('input-name', {cause: 'taken', action: 'register'});
+          } else {
+            client.authorized(name);
+            socket.once('valid-login-ack', function() {
+              client.sendToChannel('announce', {type: 'login', name: client.name});
+            });
+            client.sendToUser('valid-login', {name: client.name});
+          }
         }
       },
 
       rename: function(data, session, socket) {
         var client = new ChatClient(session, socket);
-        if (typeOf(data.name) !== 'string' || (data.name = data.name.trim()).length === 0) {
+        if (typeOf(data.name) !== 'string' || data.name.trim().length === 0) {
           client.respond('input-name', {cause: 'empty', action: 'rename'});
-        } else if (client.userList().contains(data.name)) {
-          client.respond('input-name', {cause: 'taken', action: 'rename'});
         } else {
-          var from = client.name, to = data.name;
-          client.sendToUser('valid-login', {name: to});
-          socket.once('valid-login-ack', function() {
-            client.sendToChannel('announce', {type: 'rename', from: from, to: to});
-            client.rename(to);
-          });
+          var to = data.name.trim();
+          if (client.userList().contains(to)) {
+            client.respond('input-name', {cause: 'taken', action: 'rename'});
+          } else {
+            var from = client.name;
+            client.sendToUser('valid-login', {name: to});
+            socket.once('valid-login-ack', function() {
+              client.sendToChannel('announce', {type: 'rename', from: from, to: to});
+              client.rename(to);
+            });
+          }
         }
       },
 
