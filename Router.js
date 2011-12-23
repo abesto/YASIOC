@@ -126,15 +126,15 @@ define(function() {
         return function(socket) {
           var actionName;
           // Bind each action as appropriate
-          for (actionName in this.controller.sio) {
-            if (!this.controller.sio.hasOwnProperty(actionName) || actionName === 'initialize') continue;
+          for (actionName in controller.sio) {
+            if (!controller.sio.hasOwnProperty(actionName) || actionName === 'initialize') continue;
             socket.on(actionName,
               wrapper(socket, controller.sio[actionName].bind(controller)
               )
             );
           }
           // Set up the environment for the action
-          this.controller.logger = logger;
+          controller.logger = logger;
           // And call initialize if present
           if (controller.sio.initialize) {
             wrapper(socket, controller.sio.initialize).call(controller, {});
