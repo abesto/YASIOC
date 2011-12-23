@@ -146,7 +146,7 @@ define(function() {
       // For each controller
       for (var controllerName in controllers) {
         if (!controllers.hasOwnProperty(controllerName)) continue;
-        controller = controllers[controllerName];
+        var controller = controllers[controllerName];
         // That has methods for handling socketIO events
         if (!controller.sio) continue;
         // Listen on a namespace with the same name as the controller
