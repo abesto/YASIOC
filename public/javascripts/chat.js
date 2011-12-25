@@ -110,10 +110,18 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     })
   });
 
-  function log(sender, msg)
+  function log(time, sender, msg)
   {
-    var tr = new Element('tr'), tdSender = new Element('td'), tdMsg = new Element('td');
+    var tr = new Element('tr'),
+      tdTime = new Element('td'), tdSender = new Element('td'), tdMsg = new Element('td'),
+      date = new Date();
+
     tr.addClass('chat-row');
+
+    date.setTime(time);
+    tdTime.set('text', date.toLocaleTimeString());
+    tdTime.addClass('time');
+
     tdSender.addClass('left');
     if (sender === null) {
       tdMsg.addClass('announcement');
@@ -122,7 +130,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       tdSender.appendText(sender);
     }
     tdMsg.appendText(msg);
-    tr.grab(tdSender).grab(tdMsg);
+    tr.grab(tdTime).grab(tdSender).grab(tdMsg);
 
     ui.resizeChatFiller();
 
@@ -137,9 +145,9 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
 
   function sendMessage()
   {
-    var msg = ui.message.get('value').trim();
+    var msg = ui.message.get('value').trim(), date = new Date();
     if (msg.length > 0) {
-      socket.emit('message', {text: ui.message.get('value')});
+      socket.emit('message', {text: ui.message.get('value'), time: date.getTime()});
       ui.message.set('value', '');
     }
   }
@@ -152,7 +160,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
 
     if (!inited) {
       socket.emit('get-userlist', {});
-      log(null, 'You\'ve logged in as ' + data.name);
+      log(data.time, null, 'You\'ve logged in as ' + data.name);
       ui.message.addEvent('keyup', function(event) {
         if (event.key == 'enter') {
           sendMessage();
@@ -195,7 +203,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       }
     }[data.type][(data.name || data.to) == name ? 'self' : 'other'];
 
-    if (typeOf(text) === 'string') log(null, text);
+    if (typeOf(text) === 'string') log(data.time, null, text);
 
     if (data.type === 'login' && data.name !== name) {
       el = new Element('li');
@@ -216,7 +224,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
   });
 
   socket.on('message', function(data) {
-    log(data.from, data.text);
+    log(data.time, data.from, data.text);
     if (data.from === name) Sounds.play('send');
     else Sounds.play('receive');
   });

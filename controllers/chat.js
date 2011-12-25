@@ -25,16 +25,19 @@ define(function() {
 
     // Send data to the socket that sent the message we're handling
     respond: function(type, data) {
+      if (typeOf(data.time) === 'null') data.time = (new Date()).getTime();
       this.socket.emit(type, data);
     },
 
     // Send to all connections of a user. Defaults to this user.
     sendToUser: function(type, data, user) {
+      if (typeOf(data.time) === 'null') data.time = (new Date()).getTime();
       this.socket.namespace['in']( userChannel(typeOf(user) === 'null' ? this.name : user) ).emit(type, data);
     },
 
     // Send data to a channel, 'public' by default
     sendToChannel: function(type, data, channel) {
+      if (typeOf(data.time) === 'null') data.time = (new Date()).getTime();
       this.socket.namespace['in']( publicChannel(channel) ).emit(type, data);
     },
 
