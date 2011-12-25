@@ -2,23 +2,33 @@ var express = require('express'),
 requirejs = require('requirejs'),
 app =  express.createServer(),
 sio = require('socket.io').listen(app),
-pg = require('pg'),
+sessionStore,
 Session = require('connect').middleware.session.Session,
-PGStore = require('connect-pg'), sessionStore,
 winston = require('winston');
 
-// PostgreSQL connection for session handler
-sessionStore = new PGStore(function(callback) {
-  pg.connect('tcp://nodepg:nodepg@localhost/games',
-  function (err, client) {
-    if (err) {
-      console.log(JSON.stringify(err));
-    }
-    if (client) {
-      callback(client);
-    }
+app.configure('production', function() {
+  var
+    pg = require('pg'),
+    PGStore = require('connect-pg');
+
+  sessionStore = new PGStore(function(callback) {
+    pg.connect('tcp://nodepg:nodepg@localhost/games',
+      function (err, client) {
+        if (err) {
+          console.log(JSON.stringify(err));
+        }
+        if (client) {
+          callback(client);
+        }
+      });
   });
 });
+
+app.configure('development', function() {
+  sessionStore = new express.session.MemoryStore();
+});
+
+// PostgreSQL connection for session handler
 
 // Configuration - default
 app.configure(function(){
