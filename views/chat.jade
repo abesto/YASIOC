@@ -1,7 +1,20 @@
-h1 Simple chat
-ul(id="log")
 script(type='text/javascript', src='javascripts/lib/require.js', data-main='javascripts/chat.js')
-input(type='text', id='message')
-input(type='button', value='Send', id='send')
-br
-input(type='button', value='Change name', id="change-name")
+link(type='text/css', href='/stylesheets/chat/common.css', rel='stylesheet')
+div.chat
+    div.head
+        label Select theme:
+          select.theme
+            option(value='simple') Simple
+            option(value='hello-kitty') Hello Kitty
+        input.change-name(type='button', value='Change name')
+
+    table.chat-view
+        tbody
+            tr.filler
+                td
+                td
+
+    div.foot
+        input.message(type='text')
+        input.send(type='button', value='Send')
+

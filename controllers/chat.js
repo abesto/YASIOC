@@ -48,7 +48,9 @@ define(function() {
       return ret;
     },
 
-    join: function(room) { return this.socket.join( publicChannel(room) ); },
+    join: function(room) {
+      return this.socket.join( publicChannel(room) );
+    },
     leave: function(room) { return this.socket.leave( publicChannel(room) ); },
     rename: function(to) {
       var from = this.name;
@@ -130,6 +132,11 @@ define(function() {
         } else {
           client.respond('error', {text: 'Unknown message type "' + data.type + '"'});
         }
+      },
+
+      disconnected: function(data, session, socket) {
+        var client = new ChatClient(session, socket);
+        client.sendToChannel('announcement', {type: 'logout', name: client.name});
       }
     }
   };
