@@ -197,7 +197,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
 
     if (typeOf(text) === 'string') log(null, text);
 
-    if (data.type === 'login') {
+    if (data.type === 'login' && data.name !== name) {
       el = new Element('li');
       el.appendText(data.name);
       el.setProperty('rel', data.name);
