@@ -66,6 +66,9 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     ui.chat_view_tbody = ui.chat_view.getChildren('tbody')[0];
     ui.filler = ui.chat_view_tbody.getChildren('tr.filler')[0];
 
+    ui.userlist_container = ui.chat.getElements('.userlist-container')[0];
+    ui.userlist = ui.chat.getElements('ul.userlist')[0];
+
     ui.change_name = ui.chat.getElements('.change-name')[0];
     ui.select_theme = ui.chat.getElements('.theme')[0];
 
@@ -88,12 +91,16 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
         $(window).getSize().y - 230
       );
       ui.message.setStyle('width',
-        ui.chat_view.getSize().x - ui.send.getSize().x - 25
+        ui.chat.getSize().x - ui.send.getSize().x - 25
+      );
+
+      ui.userlist_container.setStyle('width',
+        ui.chat.getSize().x - ui.chat_view.getSize().x - 65
       );
       ui.resizeChatFiller();
     };
-    ui.resizeChatToWindow();
 
+    ui.resizeChatToWindow();
     ui.message.focus();
 
     var resizeTimer;
@@ -144,6 +151,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     socket.emit('valid-login-ack', {});
 
     if (!inited) {
+      socket.emit('get-userlist', {});
       log(null, 'You\'ve logged in as ' + data.name);
       ui.message.addEvent('keyup', function(event) {
         if (event.key == 'enter') {
@@ -174,7 +182,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     });
 
   socket.on('announce', function(data) {
-    var text = {
+    var el, text = {
       login: {
         other: data.name + ' has logged in'
       },
@@ -188,6 +196,23 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     }[data.type][(data.name || data.to) == name ? 'self' : 'other'];
 
     if (typeOf(text) === 'string') log(null, text);
+
+    if (data.type === 'login') {
+      el = new Element('li');
+      el.appendText(data.name);
+      el.setProperty('rel', data.name);
+      ui.userlist.grab(el);
+    }
+
+    else  if (data.type === 'logout') {
+      ui.userlist.getElements('[rel=' + data.name + ']').dispose();
+    }
+
+    else if (data.type === 'rename') {
+      el = ui.userlist.getElements('[rel=' + data.from + ']')[0];
+      el.setProperty('rel', data.to);
+      el.set('text', data.to);
+    }
   });
 
   socket.on('message', function(data) {
@@ -195,4 +220,15 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     if (data.from === name) Sounds.play('send');
     else Sounds.play('receive');
   });
+
+  socket.on('user-list', function(data) {
+    var i, name;
+    ui.userlist.getElements().dispose();
+    data.each(function(name) {
+      var el = new Element('li');
+      el.appendText(name);
+      el.setProperty('rel', name);
+      ui.userlist.grab(el);
+    });
+  })
 });

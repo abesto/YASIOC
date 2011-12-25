@@ -137,6 +137,11 @@ define(function() {
       disconnect: function(data, session, socket) {
         var client = new ChatClient(session, socket);
         client.sendToChannel('announce', {type: 'logout', name: client.name});
+      },
+
+      'get-userlist': function(data, session, socket) {
+        var client = new ChatClient(session, socket);
+        client.respond('user-list', client.userList());
       }
     }
   };

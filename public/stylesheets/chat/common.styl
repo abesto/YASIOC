@@ -1,26 +1,24 @@
 div.chat
   width 100%
 
-  ::-webkit-scrollbar
-    width 12px
-  ::-webkit-scrollbar-track
-    -webkit-box-shadow inset 0 0 6px silver
-    border-radius 10px
-  ::-webkit-scrollbar-thumb
-    border-radius 10px
-    -webkit-box-shadow inset 0 0 6px gray
-
   .head
     border-bottom: 1px solid;
     margin 15px
     padding 7px
     border-radius 10px
 
-  .foot
-    border-top: 1px solid;
-
   table.chat-view
-    width 100%
+    ::-webkit-scrollbar
+      width 12px
+    ::-webkit-scrollbar-track
+      -webkit-box-shadow inset 0 0 6px silver
+      border-radius 10px
+    ::-webkit-scrollbar-thumb
+      border-radius 10px
+      -webkit-box-shadow inset 0 0 6px gray
+
+    width 85%
+    float left
     tbody
       overflow: auto;
       display: block;
@@ -30,4 +28,18 @@ div.chat
         border-right: 1px dashed;
         font-weight: bold;
         padding-right: 5px;
+
+  div.userlist-container
+    float right
+    margin auto
+    padding 15px
+
+    ul.userlist
+        list-style none
+        padding 0
+
+  .foot
+    border-top: 1px solid;
+    clear both
+
 
