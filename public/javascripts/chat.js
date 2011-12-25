@@ -103,10 +103,11 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
   {
     var tr = new Element('tr'), tdSender = new Element('td'), tdMsg = new Element('td');
     tr.addClass('chat-row');
-    tdSender.addClass('user');
+    tdSender.addClass('left');
     if (sender === null) {
       tdMsg.addClass('announcement');
     } else {
+      tdSender.addClass('user');
       tdSender.appendText(sender);
     }
     tdMsg.appendText(msg);
