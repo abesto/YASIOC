@@ -34,7 +34,11 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       Sounds.extension = 'mp3';
   }
 
-  /* Simple caching theme loader */
+  /**
+   * Simple caching theme loader
+   * Note that only the link tag is cached, not the CSS itself.
+   * The browser is still responsible for that.
+   */
   var Themes = {
     cache: {},
     current: null,
@@ -175,7 +179,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
         other: data.name + ' has logged in'
       },
       logout: {
-        other: data.name + 'has left'
+        other: data.name + ' has left'
       },
       rename: {
         self: 'You\'re now known as ' + data.to + ' (was: ' + data.from + ')',

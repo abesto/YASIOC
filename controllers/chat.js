@@ -134,9 +134,9 @@ define(function() {
         }
       },
 
-      disconnected: function(data, session, socket) {
+      disconnect: function(data, session, socket) {
         var client = new ChatClient(session, socket);
-        client.sendToChannel('announcement', {type: 'logout', name: client.name});
+        client.sendToChannel('announce', {type: 'logout', name: client.name});
       }
     }
   };
