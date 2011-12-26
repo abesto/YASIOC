@@ -2,44 +2,26 @@ var express = require('express'),
 requirejs = require('requirejs'),
 app =  express.createServer(),
 sio = require('socket.io').listen(app),
-sessionStore,
-Session = require('connect').middleware.session.Session,
-winston = require('winston');
-
-app.configure('production', function() {
-  var
-    pg = require('pg'),
-    PGStore = require('connect-pg');
-
-  sessionStore = new PGStore(function(callback) {
-    pg.connect('tcp://nodepg:nodepg@localhost/games',
-      function (err, client) {
-        if (err) {
-          console.log(JSON.stringify(err));
-        }
-        if (client) {
-          callback(client);
-        }
-      });
-  });
-});
-
-app.configure('development', function() {
-  sessionStore = new express.session.MemoryStore();
-});
-
-// PostgreSQL connection for session handler
+winston = require('winston'),
+mongoose = require('mongoose'),
+MongoStore = require('connect-mongo'),
+sessionStore;
 
 // Configuration - default
 app.configure(function(){
+  app.set('mongo-url', 'mongodb://localhost/games');
+  mongoose.connect(app.set('mongo-url'));
+  sessionStore = new MongoStore({
+    url: app.set('mongo-url')
+  });
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
   app.use(express.bodyParser());
   app.use(express.methodOverride());
   app.use(express.cookieParser());
   app.use(express.session({
-    store: sessionStore,
     secret: 'o71174b016u0MY34mn278077WhJ5bx',
+    store: sessionStore,
     key: 'express.sid' })
   );
   app.use(require('stylus').middleware({ src: __dirname + '/public' }));
@@ -96,9 +78,9 @@ sio.set('authorization', function (data, accept) {
     data.sessionStore = sessionStore;
     sessionStore.get(data.sessionID, function (err, session) {
       if (err || !session) {
-        accept('Error', false);
+        accept(err, false);
       } else {
-        data.session = new Session(data, session);
+        data.session = new express.session.Session(data, session);
         accept(null, true);
       }
     });
@@ -127,4 +109,3 @@ requirejs(['./Router', './controllers/index'], function(Router, controllers) {
   app.listen(8080);
   winston.info('express server listening');
 });
-

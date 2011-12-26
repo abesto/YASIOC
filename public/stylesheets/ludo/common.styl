@@ -1,0 +1,44 @@
+colors = (Yellow yellow) (Green green) (Red red) (Blue blue)
+get(hash, key)
+  return pair[1] if pair[0] == key for pair in hash
+
+getcolor(name, variant=plain)
+  c = get(colors, name)
+  if variant == field
+    c -= #333
+  else if variant == start
+    c += #999
+  return c
+
+.ludo
+  .board
+    cursor default
+    .cell
+      width 40px
+      height @width
+      font-size 30px
+      vertical-align middle
+      text-align center
+
+    .field
+      border 2px solid black
+      border-radius 7px
+
+    for color in Yellow Green Red Blue
+      .{color}
+        background-color getcolor(color, field)
+      .{color}-start
+        background-color getcolor(color, start)
+        border-color getcolor(color, field)
+      .{color}-piece
+        color getcolor(color)
+
+  .dice-container
+    float right
+    font-size 50px
+    border 3px solid black
+    border-radius 10px
+    width 60px
+    height @width
+    text-align center
+    vertical-align middle

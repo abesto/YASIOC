@@ -1,5 +1,6 @@
-define(['./chat'], function(chat) {
+define(['./chat', './ludo'], function(chat, ludo) {
   return {
-    chat: chat
+    chat: chat,
+    ludo: ludo
   };
 });

@@ -4,7 +4,6 @@ define(function() {
   var httpMethods = ['get', 'head', 'post', 'put', 'delete', 'options', 'trace', 'connect'],
   format = require('util').format;
 
-
   function bindHttpAction(opts)
   {
     if (!opts.controller[opts.method][opts.actionName]) {
@@ -121,20 +120,13 @@ define(function() {
 
     routeSocketIO: function(socketIO, controllers)
     {
-      function connectionHandler(wrapper, controller, logger)
+      function connectionHandler(wrapper, controller)
       {
         return function(socket) {
-          var actionName;
           // Bind each action as appropriate
-          for (actionName in controller.sio) {
-            if (!controller.sio.hasOwnProperty(actionName) || actionName === 'initialize') continue;
-            socket.on(actionName,
-              wrapper(socket, controller.sio[actionName].bind(controller)
-              )
-            );
-          }
-          // Set up the environment for the action
-          controller.logger = logger;
+          Object.each(controller.sio, function(action, actionName) {
+            socket.on(actionName, wrapper(socket, action.bind(controller)) );
+          });
           // And call initialize if present
           if (controller.sio.initialize) {
             wrapper(socket, controller.sio.initialize).call(controller, {});
@@ -150,8 +142,9 @@ define(function() {
         // That has methods for handling socketIO events
         if (!controller.sio) continue;
         // Listen on a namespace with the same name as the controller
+        controller.logger = this.options.logger;
         socketIO.of('/' + controllerName).on('connection',
-          connectionHandler(this.options.socketIOWrapper, controller, this.options.logger)
+          connectionHandler(this.options.socketIOWrapper, controller)
         );
       } // For each controller
     } // routeSocketIO
