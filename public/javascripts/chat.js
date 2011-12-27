@@ -155,7 +155,12 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
   socket.on('error', function(data) {
     console.error(data);
     if (data.type === 'NO_LOGIN') {
-      alert('It appears you have logged out in another tab, or your login has expired. You will be redirected to the sign-in page.');
+      alert('It appears you\'re not logged in. You will be redirected to the sign-in page.');
+      window.location = '/openid';
+    }
+
+    if (data.type === 'NO_SESSION') {
+      alert('It appears you have logged out in another tab or browser, or you have been passive for a long time. You will be redirected to the sign-in page.');
       window.location = '/openid';
     }
   });

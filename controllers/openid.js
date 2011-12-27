@@ -55,7 +55,7 @@ define(['openid', 'models/user'], function(openid, userModel) {
         {
           var to;
           if (!error && result.authenticated) {
-            userModel.auth(result, function(err, user) {
+            userModel.login(result, req.session.id, function(err, user) {
               if (err) {
                 this.logger.warn(err);
                 res.end('Error :(');
@@ -79,7 +79,14 @@ define(['openid', 'models/user'], function(openid, userModel) {
       },
 
       logout: function(req, res) {
-        delete req.session.user;
+        userModel.getAndClearSessionIds(req.session.user._id, function(err, ids) {
+          if (err) this.logger.warn(err);
+          else if (!ids) this.logger.warn('Logout: no sessions found');
+          else if (ids) {
+            this.logger.debug('Logout: destroying sessions ' + ids.join(', '));
+            ids.forEach(function(sid) { req.sessionStore.destroy(sid) });
+          }
+        }.bind(this));
         res.render('logout');
       }
     }

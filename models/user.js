@@ -5,7 +5,8 @@ define(['mongoose'], function(mongoose) {
     UserSchema = new mongoose.Schema({
       friendlyName: String,
       fullName: String,
-      email: String
+      email: String,
+      sessions: [String]
     }),
     User = mongoose.model('User', UserSchema),
 
@@ -32,7 +33,21 @@ define(['mongoose'], function(mongoose) {
     });
 
   return {
-    auth: function(data, callback) {
+    getAndClearSessionIds: function(userId, callback) {
+      User.findById(userId, ['sessions'], function(err, doc) {
+        if (!err && doc) {
+          callback(err, Array.clone(doc.sessions));
+          doc.sessions = [];
+          doc.save();
+        } else {
+          callback(err, null);
+        }
+      })
+    },
+
+
+
+    login: function(data, sessionId, callback) {
       if (!data.authenticated) {
         throw 'Pass only authorized OpenID information to User model!';
       }
@@ -49,6 +64,7 @@ define(['mongoose'], function(mongoose) {
           Object.each(data, function(value, key) {
             user[key] = value;
           });
+          user.sessions.push(sessionId);
           user.save();
 
           openid = new OpenId();
@@ -67,6 +83,7 @@ define(['mongoose'], function(mongoose) {
               Object.each(data, function(value, key) {
                 if (!user[key]) user[key] = value;
               });
+              user.sessions.push(sessionId);
               user.save();
               callback(null, new UserInterface(user));
             }
