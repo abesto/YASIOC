@@ -14,6 +14,9 @@ define(['models/user'], function(userModel) {
       this.socket = socket;
       this.session = session;
       this.name = session.user.name;
+    },
+
+    joinUserChannel: function() {
       this.socket.join( userChannel(this.name) );
     },
 
@@ -68,13 +71,14 @@ define(['models/user'], function(userModel) {
 
     sio: {
       initialize: withClient(function(client) {
-          client.respond('valid-login', {name: client.name});
-          if (!client.userList().contains(client.name)) {
-            client.sendToChannel(
-              'announce', {type: 'login', name: client.name}
-            );
-          }
-          client.join();
+        client.respond('valid-login', {name: client.name});
+        if (!client.userList().contains(client.name)) {
+          client.sendToChannel(
+            'announce', {type: 'login', name: client.name}
+          );
+        }
+        client.join();
+        client.joinUserChannel();
       }),
 
       message: withClient(function(client, data) {
