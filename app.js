@@ -103,15 +103,22 @@ requirejs(['./Router', './controllers/index'], function(Router, controllers) {
         sessionStore.get(socket.handshake.sessionID, function (err, _session) {
           if (err || !_session) {
             socket.emit('error', {type: 'NO_SESSION', message: 'No session found'});
+            if (socket.disconnected) {
+              socket.get('last_session', function(err, session) {
+                if (session && !err) handler(data, session, socket);
+              });
+            }
           } else {
             var session = new express.session.Session(socket.handshake, _session),
               auth = runAuthFilters(session, null, null, authFilters);
-            if (!auth.valid) {
-              socket.emit('error', auth);
-            } else {
-              handler(data, session, socket);
-            }
-            session.touch().save();
+            socket.set('last_session', session, function() {
+              if (!auth.valid) {
+                socket.emit('error', auth);
+              } else {
+                handler(data, session, socket);
+              }
+              session.touch().save();
+            });
           }
         });
       };
