@@ -76,7 +76,6 @@ sio.configure(function() {
         if (err || !session) {
           accept(err, false);
         } else {
-          data.session = new express.session.Session(data, session);
           accept(null, true);
         }
       });
@@ -97,11 +96,23 @@ sio.configure('production', function(){
 requirejs.config({nodeRequire: require});
 requirejs(['./Router', './controllers/index'], function(Router, controllers) {
   var router = new Router({
-    socketIOWrapper: function(socket, handler)
+    socketIOWrapper: function(socket, handler, authFilters, runAuthFilters)
     {
       return function(data) {
-        handler(data, socket.handshake.session, socket);
-        socket.handshake.session.touch().save();
+        sessionStore.get(socket.handshake.sessionID, function (err, _session) {
+          if (err || !_session) {
+            socket.emit('error', {type: 'NO_SESSION', message: 'No session found'});
+          } else {
+            var session = new express.session.Session(socket.handshake, _session),
+              auth = runAuthFilters(session, null, null, authFilters);
+            if (!auth.valid) {
+              socket.emit('error', auth);
+            } else {
+              handler(data, session, socket);
+            }
+            session.touch().save();
+          }
+        });
       };
     }
   });

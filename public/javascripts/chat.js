@@ -152,7 +152,13 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     }
   }
 
-  socket.on('error', function(data) { console.error(data); });
+  socket.on('error', function(data) {
+    console.error(data);
+    if (data.type === 'NO_LOGIN') {
+      alert('It appears you have logged out in another tab, or your login has expired. You will be redirected to the sign-in page.');
+      window.location = '/openid';
+    }
+  });
 
   socket.on('valid-login', function(data) {
     name = data.name;
@@ -176,6 +182,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       });
 
       ui.logout.addEvent('click', function() {
+        socket.close();
         window.location = '/openid/logout';
       });
 

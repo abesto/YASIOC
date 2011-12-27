@@ -34,8 +34,8 @@ define(function() {
     return names.map(function(name) { return authFilters[name]; });
   }
 
-  function runAuthFilters(session, actions, actionName) {
-    var filters = getAuthFilters(actions, actionName), i, ret;
+  function runAuthFilters(session, actions, actionName, filters) {
+    var filters = filters || getAuthFilters(actions, actionName), i, ret;
     for (i = 0; i < filters.length; i++) {
       ret = filters[i](session);
       if (!ret.valid) return ret;
@@ -200,11 +200,21 @@ define(function() {
         return function(socket) {
           // Bind each action as appropriate
           Object.each(controller.sio, function(action, actionName) {
-            socket.on(actionName, wrapper(socket, action.bind(controller)) );
+            socket.on(actionName, wrapper(
+              socket,
+              action.bind(controller),
+              getAuthFilters(controller['sio'], actionName),
+              runAuthFilters
+            ));
           });
           // And call initialize if present
           if (controller.sio.initialize) {
-            wrapper(socket, controller.sio.initialize).call(controller, {});
+            wrapper(
+              socket,
+              controller.sio.initialize,
+              getAuthFilters(controller['sio'], 'initialize'),
+              runAuthFilters
+            ).call(controller, {});
           }
         };
       }
