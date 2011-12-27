@@ -182,7 +182,6 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       });
 
       ui.logout.addEvent('click', function() {
-        socket.close();
         window.location = '/openid/logout';
       });
 
