@@ -34,7 +34,6 @@ define(['openid', 'models/user'], function(openid, userModel) {
         {
           if (error)
           {
-            console.log(error);
             res.writeHead(200);
             res.end('Authentication failed: ' + error);
           }
@@ -67,7 +66,7 @@ define(['openid', 'models/user'], function(openid, userModel) {
                   'Location': '/'
                 });
               } else {
-                res.writeHead(302, {Loaction: '/openid'});
+                res.writeHead(302, {Location: '/openid'});
               }
               res.end();
             }.bind(this));
