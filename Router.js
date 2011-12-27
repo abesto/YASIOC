@@ -2,10 +2,53 @@ define(function() {
   require('mootools');
 
   var httpMethods = ['get', 'head', 'post', 'put', 'delete', 'options', 'trace', 'connect'],
-  format = require('util').format;
+    format = require('util').format,
+    authFilters = {
+      any: function() { return {valid: true}; },
 
-  function bindHttpAction(opts)
+      login: function(session) {
+        if (!!(session.user)) {
+          return {valid: true};
+        } else {
+          return {
+            valid: false,
+            type: 'NO_LOGIN',
+            message: 'You must be logged in to perform this action',
+            callback: function(req, res) {
+              res.writeHeader(302, {Location: '/openid'});
+              res.end();
+            }
+          };
+        }
+      }
+    },
+
+    defaultAuthFilters = ['login'];
+
+  function getAuthFilters(actions, actionName) {
+    var names;
+    if (!actions['authFilters'] || !actions['authFilters'][actionName])
+      names = defaultAuthFilters;
+    else
+      names = actions['authFilters'][actionName];
+    return names.map(function(name) { return authFilters[name]; });
+  }
+
+  function runAuthFilters(session, actions, actionName) {
+    var filters = getAuthFilters(actions, actionName), i, ret;
+    for (i = 0; i < filters.length; i++) {
+      ret = filters[i](session);
+      if (!ret.valid) return ret;
+    }
+    return {valid: true};
+  }
+
+  function bindHttpAction(_opts)
   {
+    var opts = {};
+    ['method', 'actionName', 'controller', 'controllerName', 'wrapper', 'app', 'logger', 'url']
+      .forEach(function(prop) { opts[prop] = _opts[prop]; });
+    // Check that the binding is valid
     if (!opts.controller[opts.method][opts.actionName]) {
       opts.logger.warn(
         format('Action(%s) %s.%s not found', opts.method, opts.controllerName, opts.actionName)
@@ -15,11 +58,42 @@ define(function() {
         format('Action(%s) %s.%s is not a function', opts.method, opts.controllerName, opts.actionName)
       );
     } else {
-      var url = opts.url || '/' + opts.controllerName + '/' + opts.actionName;
-      opts.app[opts.method](url, opts.wrapper(opts.controller[opts.method][opts.actionName]).bind(opts.controller));
+      // It is.
+
+      var url = opts.url || '/' + opts.controllerName + '/' + opts.actionName,
+          // Run wrapper only once
+          wrapped = opts.wrapper(opts.controller[opts.method][opts.actionName]).bind(opts.controller);
+
+      opts.app[opts.method](url,
+        function(req, res) {
+          // Check that user has permission for this action
+          var auth = runAuthFilters(req.session, opts.controller[opts.method], opts.actionName);
+          if (!auth.valid) {
+            // Nope. Log it
+            opts.controller.logger.debug(
+              'Permission check failed for ' + opts.method + ' ' + url +
+               '(' + opts.controllerName + '.' + opts.actionName +
+                '): ' + auth.type + ' ' + auth.message
+            );
+            // If the filter specified a callback, run it
+            if (auth.callback)
+              auth.callback(req, res);
+
+            // Otherwise rendet the 500 Internal server error page
+            else {
+              res.writeHeader(500);
+              res.render('error');
+            }
+          } else {
+            // User has appropriate permissions, run the action
+            wrapped(req, res);
+          }
+        }
+      );
+
       opts.logger.debug(
-        format('Action(%s) %s.%s set up to handle URL %s',
-        opts.method, opts.controllerName, opts.actionName, url)
+        format('Router mapping: %s %s -> %s.%s',
+        opts.method, url, opts.controllerName, opts.actionName)
       );
     }
   }
@@ -107,7 +181,8 @@ define(function() {
             }
             // And all other actions
             for (actionName in bindOptions.controller[method]) {
-              if (actionName === 'defaultAction') continue;
+              if (actionName === 'defaultAction' || actionName === 'authFilters')
+                continue;
               bindOptions.actionName = actionName;
               bindHttpAction(bindOptions);
             }

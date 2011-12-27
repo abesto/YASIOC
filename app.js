@@ -7,15 +7,19 @@ mongoose = require('mongoose'),
 MongoStore = require('connect-mongo'),
 sessionStore;
 
-// Configuration - default
 app.configure(function(){
+  // Mongoose and mongo session store
   app.set('mongo-url', 'mongodb://localhost/games');
   mongoose.connect(app.set('mongo-url'));
   sessionStore = new MongoStore({
     url: app.set('mongo-url')
   });
+
+  // Views
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
+
+  // Middlware
   app.use(express.bodyParser());
   app.use(express.methodOverride());
   app.use(express.cookieParser());
@@ -24,12 +28,12 @@ app.configure(function(){
     store: sessionStore,
     key: 'express.sid' })
   );
+
   app.use(require('stylus').middleware({ src: __dirname + '/public' }));
   app.use(app.router);
   app.use(express['static'](__dirname + '/public'));
 });
 
-// Configuration - per environment
 app.configure('development', function(){
   app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
   winston.remove(winston.transports.Console);
@@ -52,7 +56,6 @@ app.configure('production', function(){
   );
 });
 
-// Socket.IO config
 sio.configure(function() {
   sio.set('logger', winston.loggers.get('Socket.IO'));
   sio.set('transports', [
@@ -62,31 +65,31 @@ sio.configure(function() {
   'xhr-polling',
   'jsonp-polling'
   ]);
+
+  // Connect Socket.IO actions to the session
+  sio.set('authorization', function (data, accept) {
+    if (data.headers.cookie) {
+      data.cookie = require('connect').utils.parseCookie(data.headers.cookie);
+      data.sessionID = data.cookie['express.sid'];
+      data.sessionStore = sessionStore;
+      sessionStore.get(data.sessionID, function (err, session) {
+        if (err || !session) {
+          accept(err, false);
+        } else {
+          data.session = new express.session.Session(data, session);
+          accept(null, true);
+        }
+      });
+    } else {
+      return accept('No cookie transmitted.', false);
+    }
+  });
 });
 
 sio.configure('production', function(){
   sio.enable('browser client minification');
   sio.enable('browser client etag');
   sio.enable('browser client gzip');
-});
-
-// Connect Socket.IO to session
-sio.set('authorization', function (data, accept) {
-  if (data.headers.cookie) {
-    data.cookie = require('connect').utils.parseCookie(data.headers.cookie);
-    data.sessionID = data.cookie['express.sid'];
-    data.sessionStore = sessionStore;
-    sessionStore.get(data.sessionID, function (err, session) {
-      if (err || !session) {
-        accept(err, false);
-      } else {
-        data.session = new express.session.Session(data, session);
-        accept(null, true);
-      }
-    });
-  } else {
-    return accept('No cookie transmitted.', false);
-  }
 });
 
 // Routes, application code entry points

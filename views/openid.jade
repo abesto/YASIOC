@@ -1,0 +1,31 @@
+!!! 5
+head
+  title Sign-in
+  link(type='text/css', rel='stylesheet', href='/stylesheets/openid.css')
+  script(type='text/javascript', src='/javascripts/lib/mootools.js')
+  script(type='text/javascript', src='/javascripts/lib/mootools-more.js')
+  script(type='text/javascript', src='/javascripts/lib/openid-mootools.js')
+  script(type='text/javascript', src='/javascripts/lib/openid-en.js')
+  script(type='text/javascript')
+    window.addEvent('domready', function(){
+      openid.img_path='/images/';
+      openid.init('openid_identifier');
+      //openid.setDemoMode(true); //Stops form submission for client javascript-only test purposes
+    });
+
+body
+  h2 YASIOC sign-in
+  p Yet another Socket.IO chat
+  form#openid_form(action='/openid/authenticate', method='get')
+    input#openid_form_submit('type='submit', style='display: none')
+    fieldset
+      legend Sign-in or Create New Account
+      div#openid_choice
+        p Please click your account provider:
+        div#openid_btns
+      div#openid_input_area
+        input#openid_identifier(name='openid_identifier', type='text', vaule='http://')
+        input#openid_submit(type='submit', value='Sign-In')
+      noscript
+        p OpenID is service that allows you to log-on to many different websites using a single indentity.
+I         Find out <a href="http://openid.net/what/">more about OpenID</a> and <a href="http://openid.net/get/">how to get an OpenID enabled account</a>.

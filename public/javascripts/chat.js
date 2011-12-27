@@ -69,7 +69,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     ui.userlist_container = ui.chat.getElements('.userlist-container')[0];
     ui.userlist = ui.chat.getElements('ul.userlist')[0];
 
-    ui.change_name = ui.chat.getElements('.change-name')[0];
+    ui.logout = ui.chat.getElements('.logout')[0];
     ui.select_theme = ui.chat.getElements('.theme')[0];
 
     ui.message = ui.chat.getElements('.message')[0];
@@ -166,28 +166,26 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
           sendMessage();
         }
       });
+
       ui.send.addEvent('click', sendMessage);
-      ui.change_name.addEvent('click', function() {
-        var name = inputUsername('Enter your new name:');
-        socket.emit('rename', {name: name});
-      });
-      inited = true;
+
       ui.select_theme.addEvent('change', function() {
         Themes.apply(ui.select_theme.getProperty('value'));
         ui.resizeChatFiller();
         ui.scrollToBottom();
       });
+
+      ui.logout.addEvent('click', function() {
+        window.location = '/openid/logout';
+      });
+
+      inited = true;
     }
   });
 
-  socket.on('input-name', function (data) {
-    var text = {
-      register: 'Welcome. Please enter the nickname you will use',
-      empty: 'You\'ve entered an empty name. Please try again',
-      taken: 'The name you\'ve entered is already taken. Please try again'
-      }[data.cause] + ':';
-      socket.emit(data.action, {name: inputUsername(text)});
-    });
+  socket.on('invalid-login', function (data) {
+    window.location = '/openid';
+  });
 
   socket.on('announce', function(data) {
     var el, text = {
@@ -196,10 +194,6 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
       },
       logout: {
         other: data.name + ' has left'
-      },
-      rename: {
-        self: 'You\'re now known as ' + data.to + ' (was: ' + data.from + ')',
-        other : data.from + ' is now known as ' + data.to
       }
     }[data.type][(data.name || data.to) == name ? 'self' : 'other'];
 
@@ -214,12 +208,6 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
 
     else  if (data.type === 'logout') {
       ui.userlist.getElements('[rel=' + data.name + ']').dispose();
-    }
-
-    else if (data.type === 'rename') {
-      el = ui.userlist.getElements('[rel=' + data.from + ']')[0];
-      el.setProperty('rel', data.to);
-      el.set('text', data.to);
     }
   });
 
