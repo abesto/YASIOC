@@ -1,4 +1,6 @@
 define(['openid', 'models/user'], function(openid, userModel) {
+  var config = require('config');
+
   var extensions = [
     new openid.AttributeExchange(
       {
@@ -8,7 +10,7 @@ define(['openid', 'models/user'], function(openid, userModel) {
       })],
 
     relyingParty = new openid.RelyingParty(
-      'http://localhost:8080/openid/verify', // Verification URL (yours)
+      config['openid-verify-url'], // Verification URL (yours)
       null, // Realm (optional, specifies realm for OpenID authentication)
       false, // Use stateless verification
       false, // Strict mode

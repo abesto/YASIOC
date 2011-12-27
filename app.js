@@ -1,18 +1,19 @@
 var express = require('express'),
-requirejs = require('requirejs'),
 app =  express.createServer(),
 sio = require('socket.io').listen(app),
 winston = require('winston'),
 mongoose = require('mongoose'),
 MongoStore = require('connect-mongo'),
+config = require('./config'),
+requirejs = require('requirejs'),
 sessionStore;
 
 app.configure(function(){
   // Mongoose and mongo session store
-  app.set('mongo-url', 'mongodb://localhost/games');
-  mongoose.connect(app.set('mongo-url'));
+  mongoose.connect(config['mongo-url']);
   sessionStore = new MongoStore({
-    url: app.set('mongo-url')
+    url: config['mongo-url'],
+    clear_interval: 60
   });
 
   // Views
