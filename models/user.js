@@ -26,6 +26,7 @@ define(['mongoose'], function(mongoose) {
           prop = nameProperties[i];
           if (user[prop]) {
             this.name = user[prop];
+            if (prop === 'email') this.name = this.name.split('@')[0];
             break;
           }
         }

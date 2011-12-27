@@ -51,7 +51,7 @@ define(['models/user'], function(userModel) {
     join: function(room) {
       return this.socket.join( publicChannel(room) );
     },
-    leave: function(room) { return this.socket.leave( publicChannel(room) ); },
+    leave: function(room) { return this.socket.leave( publicChannel(room) ); }
   });
 
   function withClient(callback) {
