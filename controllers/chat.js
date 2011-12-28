@@ -1,4 +1,4 @@
-define(['models/user'], function(userModel) {
+define(['fs', 'models/user'], function(fs, userModel) {
   var ChatClient;
 
   require('mootools');
@@ -6,6 +6,29 @@ define(['models/user'], function(userModel) {
   function userChannel(user) { return 'user-' + user; }
   function publicChannel(name) {
     return 'public-' + (typeOf(name) === 'null' ? 'default' : name);
+  }
+
+  function chatlog(type, name, message) {
+    var files = {}, filename = 'chatlog/' + type + '-' + name + '.txt', logfile, logtext;
+
+    if (!files[filename]) {
+      files[filename] = fs.createWriteStream(filename, {flags: 'a'});
+    }
+    logfile = files[filename];
+
+    // Announcements
+    if (message.type) {
+      if (message.type === 'login') {
+        logtext = message.name + ' logged in';
+      } else if (message.type === 'logout') {
+        logtext = message.name + ' left';
+      }
+    } else {
+      // Message
+      logtext = message.from + ': ' + message.text;
+    }
+
+    logfile.write('[' + (new Date()).toLocaleString() + '] ' + logtext + '\n');
   }
 
   //noinspection JSUnusedAssignment
@@ -76,6 +99,7 @@ define(['models/user'], function(userModel) {
           client.sendToChannel(
             'announce', {type: 'login', name: client.name}
           );
+          chatlog('public', 'default', {type: 'login', name: client.name});
         }
         client.join();
         client.joinUserChannel();
@@ -85,6 +109,7 @@ define(['models/user'], function(userModel) {
         data.from = client.name;
         if (typeOf(data.type) === 'null'|| data.type === 'shout') {
           client.sendToChannel('message', data, data.channel);
+          chatlog('public', 'default', data);
         } else if (data.type === 'whisper') {
           client.sendToUser('message', data, data.to);
         } else {
@@ -94,6 +119,7 @@ define(['models/user'], function(userModel) {
 
       disconnect: withClient(function(client) {
         client.sendToChannel('announce', {type: 'logout', name: client.name});
+        chatlog('public', 'default', {type: 'logout', name: client.name});
       }),
 
       'get-userlist': withClient(function(client) {
