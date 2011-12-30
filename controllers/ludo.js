@@ -27,7 +27,7 @@ define(['models/ludo'], function(Model) {
     }),
 
     create: function(data, session, socket) {
-      Model.create({abesto: 'Green', '42': 'Red'}, function(err, model) {
+      Model.create({'Red': session.user.name, 'Green': session.user.name}, function(err, model) {
         if (err) {
           this.logger.warn(err);
           socket.emit('error', err);

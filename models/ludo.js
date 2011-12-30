@@ -3,13 +3,8 @@ define(['mongoose'], function(mongoose) {
   var Piece, Player, Game,
     PieceModel, PlayerModel, GameModel,
     LudoInterface,
-    Color = { type: String, enum: ['Red', 'Blue', 'Yellow', 'Green'] },
-    startingPositions = {
-      Red: [0,6],
-      Blue: [6,10],
-      Yellow: [10, 4],
-      Green: [4, 0]
-    },
+    colors = ['Red', 'Blue', 'Yellow', 'Green'],
+    Color = { type: String, enum: colors},
     paths = {
       Red: {
         front: [[0,6], [1,6], [2,6], [3,6], [4,6]],
@@ -33,48 +28,6 @@ define(['mongoose'], function(mongoose) {
       }
     };
 
-  function pathInfo(row, column) {
-    var pathColor, pathLeg, path, pathIndex;
-    for (pathColor in paths) {
-      for (pathLeg in paths[pathColor]) {
-        path = paths[pathColor][pathLeg];
-        for (pathIndex in path) {
-          if (path[pathIndex][0] == row && path[pathIndex][1] == column) {
-            return {
-              color: pathColor,
-              leg: pathLeg,
-              index: pathIndex
-            };
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  function next(path, color) {
-    if (path === null) return null;
-
-    if (path.index.toInt() + 1 < paths[path.color][path.leg].length) {
-      path.index++;
-    } else if (path.leg === 'front') {
-      path.index = 0;
-      path.color = Color.enum[ (Color.enum.indexOf(path.color)+1) % 4 ];
-      path.leg = 'back';
-    } else if (path.leg === 'back') {
-      path.index = 0;
-      if (color === path.color) {
-        path.leg = 'final';
-      } else {
-        path.leg = 'front';
-      }
-    } else {
-      return null;
-    }
-
-    return path;
-  }
-
   Piece = new mongoose.Schema({
     row: Number,
     column: Number,
@@ -96,6 +49,127 @@ define(['mongoose'], function(mongoose) {
   });
   GameModel = mongoose.model('LudoGame', Game);
 
+
+  var Position = new Class({
+    initialize: function(color) {
+      this.pieceColor = color;
+      this.reset();
+    },
+
+    setRowCol: function(row, column) {
+      if (row == -1 && column == -1) {
+        this.reset();
+        return;
+      }
+
+      var color, leg, index, path;
+      for (color in paths) {
+        for (leg in paths[color]) {
+          path = paths[color][leg];
+          for (index in path) {
+            if (path[index][0] === row && path[index][1] === column) {
+              this.row = row;
+              this.column = column;
+              this.pathColor = color;
+              this.leg = leg;
+              this.index = index.toInt();
+              return;
+            }
+          }
+        }
+      }
+
+      throw 'Unable to find position for row ' + row + ', column ' + column;
+    },
+
+    /** @api private */
+    setPathInfo: function(color, leg, index) {
+      this.pathColor = color;
+      this.leg = leg;
+      this.index = index;
+      var pair = paths[this.pathColor][this.leg][this.index];
+      this.row = pair[0];
+      this.column = pair[1];
+    },
+
+    /**
+     * Set to the initial position (before entering the playing field)
+     * @api public
+     */
+    reset: function() {
+      this.pathColor = 'initial';
+      this.leg = 'initial';
+      this.index = 'initial';
+      this.row = -1;
+      this.column = -1;
+    },
+
+    /** @api private */
+    nextLeg: function(from) {
+      var ret = {color: from.color, leg: from.leg};
+      if (ret.leg === 'initial') {
+        ret.color = this.pieceColor;
+        ret.leg = 'front';
+      } else if (ret.leg === 'front') {
+        ret.color = colors[ (colors.indexOf(from.color)+1) % 4 ];
+        ret.leg = 'back';
+      } else if (ret.leg === 'back') {
+        if (this.pieceColor === from.color) {
+          ret.leg = 'final';
+        } else {
+          ret.leg = 'front';
+        }
+      } else {
+        throw Error('No leg after final');
+      }
+
+      return ret;
+    },
+
+    /** @api public */
+    movesLeft: function(max) {
+      var leg = {color: this.pathColor, leg: this.leg}, num = paths[leg.color][leg.leg].length - this.index - 1;
+      while (leg.leg !== 'final' && (!max || num < max)) {
+        leg = this.nextLeg(leg);
+        num += paths[leg.color][leg.leg].length;
+      }
+      return num;
+    },
+
+    /** @api public */
+    step: function() {
+      // Move from initial (outside playing field) to starting position
+      if (this.leg === 'initial') {
+        this.setPathInfo(this.pieceColor, 'front', 0);
+
+      // Move within a leg
+      } else if (this.index + 1 < paths[this.pathColor][this.leg].length) {
+        this.index++;
+
+      // Move to next leg
+      } else {
+        var leg = this.nextLeg({color: this.pathColor, leg: this.leg});
+        this.index = 0;
+        this.pathColor = leg.color;
+        this.leg = leg.leg;
+      }
+
+      // Update row, column
+      this.row = paths[this.pathColor][this.leg][this.index][0];
+      this.column = paths[this.pathColor][this.leg][this.index][1];
+    }
+  });
+
+  Position.fromPair = function(color, row, column) {
+    var p = new Position();
+    p.pieceColor = color;
+    p.setRowCol(row, column);
+    return p;
+  };
+
+  Position.initial = function(color) {
+    return Position.fromPair(color, [-1,-1]);
+  };
 
   //noinspection JSUnusedAssignment
   LudoInterface = new Class({
@@ -119,40 +193,39 @@ define(['mongoose'], function(mongoose) {
 
     move: function(pieceId) {
       var piece = this.model.pieces.id(pieceId),
-        current = pathInfo(piece.row, piece.column),
-        to = current,
+        pos = Position.fromPair(piece.color, piece.row.toInt(), piece.column.toInt()),
         i;
 
       // Start on 6
-      if (piece.row == -1 && piece.column == -1) {
+      if (pos.row == -1 && pos.column == -1) {
         if (this.model.dice == 6) {
-          to = startingPositions[piece.color];
+          pos.step();
         } else {
-          to = null;
+          pos = null;
         }
       } else {
         // Else try to step according to rules, this.model.dice steps
-        for (i = 0; i < this.model.dice; i++) {
-          to = next(to, piece.color);
-        }
-        if (to !== null) {
-          to = paths[to.color][to.leg][to.index];
+        if (pos.movesLeft(this.model.dice) >= this.model.dice) {
+          for (i = 0; i < this.model.dice; i++) {
+            pos.step();
+          }
+        } else {
+          pos = null;
         }
       }
 
-      if (to === null) return null;
+      if (pos === null) return null;
 
       // Check that the field is empty
       for (i in this.model.pieces) {
-        if (this.model.pieces[i].row == to[0] && this.model.pieces[i].column == to[1])
+        if (this.model.pieces[i]._id != pieceId && this.model.pieces[i].row == pos.row && this.model.pieces[i].column == pos.column)
           return null;
       }
 
       // Move is valid
-      piece.row = to[0];
-      piece.column = to[1];
+      piece.row = pos.row;
+      piece.column = pos.column;
       this.model.save();
-
       return piece;
     }
   });
@@ -161,7 +234,7 @@ define(['mongoose'], function(mongoose) {
     /* players: {id: color} */
     create: function(players, callback) {
       var model = new GameModel();
-      Object.each(players, function(color, id) {
+      Object.each(players, function(id, color) {
         var player = new PlayerModel(), i, piece;
         player.color = color;
         player.id = id;

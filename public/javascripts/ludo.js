@@ -4,7 +4,7 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
       Red: [[0,7], [0,8], [1,7], [1,8]],
       Green: [[3,0], [2,0], [3,1], [2,1]]
     },
-    id = '4ef8b872f326df037a000003';
+    id = '4efdae96619938c855000005';
 
   $(document).addEvent('domready', function() {
     var board = window.board = new Board(11, 11), socket, ui;
