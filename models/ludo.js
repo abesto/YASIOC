@@ -175,10 +175,18 @@ define(['mongoose'], function(mongoose) {
       this.piece = piece;
       this.position = position;
       this.done = false;
+      this.updatedPieces = [];
     },
 
     step: function() {
-      if (!this.done) this.position.step();
+      if (!this.done) {
+        this.position.step();
+        this.updated(this.piece);
+      }
+    },
+
+    updated: function(piece) {
+      if (!this.updatedPieces.contains(piece)) this.updatedPieces.push(piece);
     }
   });
 
@@ -203,7 +211,11 @@ define(['mongoose'], function(mongoose) {
       }
 
       if (data.name === 'Error') return data;
-      return data.position;
+
+      piece.row = data.position.row;
+      piece.column = data.position.column;
+
+      return data.updatedPieces;
     },
 
     startOn: function(numbers) {
@@ -232,6 +244,19 @@ define(['mongoose'], function(mongoose) {
     stepNoDivision: function(data) {
       for (var i = 0; i < data.game.dice; i++) {
         data.step();
+      }
+      return data;
+    },
+
+    takeOnSameField: function(data) {
+      for (var i in data.game.pieces) {
+        var piece = data.game.pieces[i];
+        if (data.piece.color != piece.color && piece.row == data.position.row && piece.column == data.position.column) {
+          piece.row = -1;
+          piece.column = -1;
+          data.updated(piece);
+          break;
+        }
       }
       return data;
     },
@@ -273,17 +298,17 @@ define(['mongoose'], function(mongoose) {
         Rules.startOn(6),
         Rules.noOverstepping,
         Rules.stepNoDivision,
-        Rules.noDoubling
+        //Rules.noTakeOnStartingPosition,
+        Rules.takeOnSameField,
+        Rules.noDoubling,
       ];
 
       var result = Rules.run(rules, this.model, piece, pos);
 
       if (result.name === 'Error') return result;
 
-      piece.row = result.row;
-      piece.column = result.column;
       this.model.save();
-      return piece;
+      return result;
     }
   });
 
