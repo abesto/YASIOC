@@ -1,55 +1,57 @@
 define(['mongoose'], function(mongoose) {
   require('mootools');
-  var Piece, Player, Game,
-    PieceModel, PlayerModel, GameModel,
-    LudoInterface,
-    colors = ['Red', 'Blue', 'Yellow', 'Green'],
-    Color = { type: String, enum: colors},
-    paths = {
-      Red: {
-        front: [[0,6], [1,6], [2,6], [3,6], [4,6]],
-        back: [[3,4], [2,4], [1,4], [0,4], [0,5]],
-        final: [[1,5], [2,5], [3,5], [4,5], [5,5]]
-      },
-      Blue: {
-        front: [[6,10], [6,9], [6,8], [6,7], [6,6]],
-        back: [[4,7], [4,8], [4,9], [4,10], [5,10]],
-        final: [[5,9], [5,8], [5,7], [5,6], [5,5]]
-      },
-      Yellow: {
-        front: [[10,4], [9,4], [8,4], [7,4], [6,4]],
-        back: [[7,6], [8,6], [9,6], [10,6], [10,5]],
-        final: [[9,5], [8,5], [7,5], [6,5], [5,5]]
-      },
-      Green: {
-        front: [[4,0], [4,1], [4,2], [4,3], [4,4]],
-        back: [[6,3], [6,2], [6,1], [6,0], [5,0]],
-        final: [[5,1], [5,2], [5,3], [5,4], [5,5]]
-      }
-    };
+  var colors = ['Red', 'Blue', 'Yellow', 'Green'];
 
-  Piece = new mongoose.Schema({
+  var Schema = {};
+  Schema.Color = { type: String, 'enum': colors};
+  Schema.Piece = new mongoose.Schema({
     row: Number,
     column: Number,
-    color: Color
+    color: Schema.Color
   });
-  PieceModel = mongoose.model('LudoPiece', Piece);
 
-  Player = new mongoose.Schema({
-    color: Color,
-    id: String
+  Schema.Player = new mongoose.Schema({
+      color: Schema.Color,
+      id: String
   });
-  PlayerModel = mongoose.model('LudoPlayer', Player);
 
-  Game = new mongoose.Schema({
-    players: [Player],
-    pieces: [Piece],
+  Schema.Game = new mongoose.Schema({
+    players: [Schema.Player],
+    pieces: [Schema.Piece],
     next: String,
     dice: Number
   });
-  GameModel = mongoose.model('LudoGame', Game);
 
+  var Model = {};
+  Model.Piece = mongoose.model('LudoPiece', Schema.Piece);
+  Model.Player = mongoose.model('LudoPlayer', Schema.Player);
+  Model.Game = mongoose.model('LudoGame', Schema.Game);
 
+  var paths = {
+    Red: {
+      front: [[0,6], [1,6], [2,6], [3,6], [4,6]],
+      back: [[3,4], [2,4], [1,4], [0,4], [0,5]],
+      'final': [[1,5], [2,5], [3,5], [4,5], [5,5]]
+    },
+    Blue: {
+      front: [[6,10], [6,9], [6,8], [6,7], [6,6]],
+      back: [[4,7], [4,8], [4,9], [4,10], [5,10]],
+      'final': [[5,9], [5,8], [5,7], [5,6], [5,5]]
+    },
+    Yellow: {
+      front: [[10,4], [9,4], [8,4], [7,4], [6,4]],
+      back: [[7,6], [8,6], [9,6], [10,6], [10,5]],
+      'final': [[9,5], [8,5], [7,5], [6,5], [5,5]]
+    },
+    Green: {
+      front: [[4,0], [4,1], [4,2], [4,3], [4,4]],
+      back: [[6,3], [6,2], [6,1], [6,0], [5,0]],
+      'final': [[5,1], [5,2], [5,3], [5,4], [5,5]]
+    }};
+
+  /**
+   * Abstracts away the position of a piece on the game board
+   */
   var Position = new Class({
     initialize: function(color) {
       this.pieceColor = color;
@@ -67,7 +69,7 @@ define(['mongoose'], function(mongoose) {
         for (leg in paths[color]) {
           path = paths[color][leg];
           for (index in path) {
-            if (path[index][0] === row && path[index][1] === column) {
+            if (path[index][0] == row && path[index][1] == column) {
               this.row = row;
               this.column = column;
               this.pathColor = color;
@@ -79,7 +81,7 @@ define(['mongoose'], function(mongoose) {
         }
       }
 
-      throw 'Unable to find position for row ' + row + ', column ' + column;
+      throw Error('Unable to find position for row ' + row + ', column ' + column);
     },
 
     /** @api private */
@@ -167,12 +169,84 @@ define(['mongoose'], function(mongoose) {
     return p;
   };
 
-  Position.initial = function(color) {
-    return Position.fromPair(color, [-1,-1]);
+  var RulesRunData = new Class({
+    initialize: function(game, piece, position) {
+      this.game = game;
+      this.piece = piece;
+      this.position = position;
+      this.done = false;
+    },
+
+    step: function() {
+      if (!this.done) this.position.step();
+    }
+  });
+
+  var Rules = {
+    /**
+     * Run a series of "rules" on a piece
+     * @param rules
+     * @param game Model.Game
+     * @param piece Model.Piece
+     * @param position Position
+     *
+     * @return Position|Error
+     */
+    run: function(rules, game, piece, position) {
+      var data = new RulesRunData(game, piece, position);
+
+      for (var i = 0;
+           i < rules.length && data.name != 'Error';
+           i++)
+      {
+        data = rules[i](data);
+      }
+
+      if (data.name === 'Error') return data;
+      return data.position;
+    },
+
+    startOn: function(numbers) {
+      if (typeOf(numbers) !== "Array") numbers = [numbers];
+      return function(data) {
+        if (data.position.leg == 'initial') {
+          if (!numbers.contains(data.game.dice.toInt())) {
+            return Error('START_ON:'+numbers.join(','));
+          } else {
+            data.step();
+            data.done = true;
+            return data;
+          }
+        } else {
+          return data;
+        }
+      }
+    },
+
+    noOverstepping: function(data) {
+      if (data.position.movesLeft(data.game.dice) < data.game.dice)
+        return Error('NO_OVERSTEPPING');
+      return data;
+    },
+
+    stepNoDivision: function(data) {
+      for (var i = 0; i < data.game.dice; i++) {
+        data.step();
+      }
+      return data;
+    },
+
+    noDoubling: function(data) {
+      for (var i in data.game.pieces) {
+        var piece = data.game.pieces[i];
+        if (data.piece._id != piece._id && piece.row == data.position.row && piece.column == data.position.column)
+          return Error('FIELD_NOT_EMPTY');
+      }
+      return data;
+    }
   };
 
-  //noinspection JSUnusedAssignment
-  LudoInterface = new Class({
+  var LudoInterface = new Class({
     initialize: function(model) {
       this.model = model;
     },
@@ -192,39 +266,22 @@ define(['mongoose'], function(mongoose) {
     },
 
     move: function(pieceId) {
-      var piece = this.model.pieces.id(pieceId),
-        pos = Position.fromPair(piece.color, piece.row.toInt(), piece.column.toInt()),
-        i;
+      var piece = this.model.pieces.id(pieceId);
+      var pos = Position.fromPair(piece.color, piece.row.toInt(), piece.column.toInt());
 
-      // Start on 6
-      if (pos.row == -1 && pos.column == -1) {
-        if (this.model.dice == 6) {
-          pos.step();
-        } else {
-          pos = null;
-        }
-      } else {
-        // Else try to step according to rules, this.model.dice steps
-        if (pos.movesLeft(this.model.dice) >= this.model.dice) {
-          for (i = 0; i < this.model.dice; i++) {
-            pos.step();
-          }
-        } else {
-          pos = null;
-        }
-      }
+      var rules = [
+        Rules.startOn(6),
+        Rules.noOverstepping,
+        Rules.stepNoDivision,
+        Rules.noDoubling
+      ];
 
-      if (pos === null) return null;
+      var result = Rules.run(rules, this.model, piece, pos);
 
-      // Check that the field is empty
-      for (i in this.model.pieces) {
-        if (this.model.pieces[i]._id != pieceId && this.model.pieces[i].row == pos.row && this.model.pieces[i].column == pos.column)
-          return null;
-      }
+      if (result.name === 'Error') return result;
 
-      // Move is valid
-      piece.row = pos.row;
-      piece.column = pos.column;
+      piece.row = result.row;
+      piece.column = result.column;
       this.model.save();
       return piece;
     }
@@ -233,14 +290,14 @@ define(['mongoose'], function(mongoose) {
   return {
     /* players: {id: color} */
     create: function(players, callback) {
-      var model = new GameModel();
+      var model = new Model.Game();
       Object.each(players, function(id, color) {
-        var player = new PlayerModel(), i, piece;
+        var player = new Model.Player(), i, piece;
         player.color = color;
         player.id = id;
         model.players.push(player);
         for (i = 0; i < 4; i++) {
-          piece = new PieceModel();
+          piece = new Model.Piece();
           piece.color = color;
           piece.row = -1;
           piece.column = -1;
@@ -253,7 +310,7 @@ define(['mongoose'], function(mongoose) {
     },
 
     load: function(id, callback) {
-      GameModel.findById(id, function(err, doc) {
+      Model.Game.findById(id, function(err, doc) {
         if (err) {
           callback(err, null);
         } else if (!doc) {

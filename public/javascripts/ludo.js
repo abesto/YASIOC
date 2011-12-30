@@ -4,7 +4,7 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
       Red: [[0,7], [0,8], [1,7], [1,8]],
       Green: [[3,0], [2,0], [3,1], [2,1]]
     },
-    id = '4efdae96619938c855000005';
+    id = '4efde38c893adb307c00000e';
 
   $(document).addEvent('domready', function() {
     var board = window.board = new Board(11, 11), socket, ui;
@@ -60,6 +60,7 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
         socket.emit('move', {id: id, piece: piece._id});
       });
     });
+
 
     socket.on('error', function(data) { console.log(data); });
     socket.on('created', function(data) { socket.emit('join', {id: data.id}); });

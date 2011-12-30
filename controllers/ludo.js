@@ -43,7 +43,7 @@ define(['models/ludo'], function(Model) {
 
     move: withModel(function(model, data, session, socket) {
       var ret = model.move(data.piece);
-      if (!ret) socket.emit('invalid-move');
+      if (ret.name === 'Error') socket.emit('invalid-move', {cause: ret.message});
       else socket.emit('move', {piece: ret});
     })
   };
