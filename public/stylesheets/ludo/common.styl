@@ -2,6 +2,12 @@ colors = (Yellow yellow) (Green green) (Red red) (Blue blue)
 get(hash, key)
   return pair[1] if pair[0] == key for pair in hash
 
+transform_rotate(deg)
+  -webkit-transform: rotate(deg)
+  -moz-transform: rotate(deg)
+  -o-transform: rotate(deg)
+  -ms-transform: rotate(deg)
+
 getcolor(name, variant=plain)
   c = get(colors, name)
   if variant == field
@@ -12,6 +18,7 @@ getcolor(name, variant=plain)
 
 .ludo
   .board
+    transform_rotate(45deg)
     cursor default
     .cell
       width 40px

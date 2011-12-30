@@ -379,7 +379,7 @@ define(['mongoose'], function(mongoose) {
   });
 
   return {
-    /* players: {id: color} */
+    /* players: {color: id} */
     create: function(players, callback) {
       var model = new Model.Game();
       Object.each(players, function(id, color) {
