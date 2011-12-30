@@ -27,30 +27,34 @@ define(['mongoose'], function(mongoose) {
   Model.Player = mongoose.model('LudoPlayer', Schema.Player);
   Model.Game = mongoose.model('LudoGame', Schema.Game);
 
-  var paths = {
+  var pathParts = {
     Red: {
+      initial: [[-1,-1]],
       front: [[0,6], [1,6], [2,6], [3,6], [4,6]],
       back: [[3,4], [2,4], [1,4], [0,4], [0,5]],
       'final': [[1,5], [2,5], [3,5], [4,5], [5,5]]
     },
     Blue: {
+      initial: [[-1,-1]],
       front: [[6,10], [6,9], [6,8], [6,7], [6,6]],
       back: [[4,7], [4,8], [4,9], [4,10], [5,10]],
       'final': [[5,9], [5,8], [5,7], [5,6], [5,5]]
     },
     Yellow: {
+      initial: [[-1,-1]],
       front: [[10,4], [9,4], [8,4], [7,4], [6,4]],
       back: [[7,6], [8,6], [9,6], [10,6], [10,5]],
       'final': [[9,5], [8,5], [7,5], [6,5], [5,5]]
     },
     Green: {
+      initial: [[-1,-1]],
       front: [[4,0], [4,1], [4,2], [4,3], [4,4]],
       back: [[6,3], [6,2], [6,1], [6,0], [5,0]],
       'final': [[5,1], [5,2], [5,3], [5,4], [5,5]]
     }};
-
   /**
    * Abstracts away the position of a piece on the game board
+   * Used for pre-generating the paths
    */
   var Position = new Class({
     initialize: function(color) {
@@ -65,9 +69,9 @@ define(['mongoose'], function(mongoose) {
       }
 
       var color, leg, index, path;
-      for (color in paths) {
-        for (leg in paths[color]) {
-          path = paths[color][leg];
+      for (color in pathParts) {
+        for (leg in pathParts[color]) {
+          path = pathParts[color][leg];
           for (index in path) {
             if (path[index][0] == row && path[index][1] == column) {
               this.row = row;
@@ -89,7 +93,7 @@ define(['mongoose'], function(mongoose) {
       this.pathColor = color;
       this.leg = leg;
       this.index = index;
-      var pair = paths[this.pathColor][this.leg][this.index];
+      var pair = pathParts[this.pathColor][this.leg][this.index];
       this.row = pair[0];
       this.column = pair[1];
     },
@@ -99,9 +103,9 @@ define(['mongoose'], function(mongoose) {
      * @api public
      */
     reset: function() {
-      this.pathColor = 'initial';
       this.leg = 'initial';
-      this.index = 'initial';
+      this.pathColor = this.pieceColor;
+      this.index = 0;
       this.row = -1;
       this.column = -1;
     },
@@ -130,10 +134,10 @@ define(['mongoose'], function(mongoose) {
 
     /** @api public */
     movesLeft: function(max) {
-      var leg = {color: this.pathColor, leg: this.leg}, num = paths[leg.color][leg.leg].length - this.index - 1;
+      var leg = {color: this.pathColor, leg: this.leg}, num = pathParts[leg.color][leg.leg].length - this.index - 1;
       while (leg.leg !== 'final' && (!max || num < max)) {
         leg = this.nextLeg(leg);
-        num += paths[leg.color][leg.leg].length;
+        num += pathParts[leg.color][leg.leg].length;
       }
       return num;
     },
@@ -144,11 +148,11 @@ define(['mongoose'], function(mongoose) {
       if (this.leg === 'initial') {
         this.setPathInfo(this.pieceColor, 'front', 0);
 
-      // Move within a leg
-      } else if (this.index + 1 < paths[this.pathColor][this.leg].length) {
+        // Move within a leg
+      } else if (this.index + 1 < pathParts[this.pathColor][this.leg].length) {
         this.index++;
 
-      // Move to next leg
+        // Move to next leg
       } else {
         var leg = this.nextLeg({color: this.pathColor, leg: this.leg});
         this.index = 0;
@@ -157,17 +161,56 @@ define(['mongoose'], function(mongoose) {
       }
 
       // Update row, column
-      this.row = paths[this.pathColor][this.leg][this.index][0];
-      this.column = paths[this.pathColor][this.leg][this.index][1];
+      this.row = pathParts[this.pathColor][this.leg][this.index][0];
+      this.column = pathParts[this.pathColor][this.leg][this.index][1];
     }
   });
 
-  Position.fromPair = function(color, row, column) {
+  Position.fromData = function(color, row, column) {
     var p = new Position();
     p.pieceColor = color;
     p.setRowCol(row, column);
     return p;
   };
+
+  var paths = {Red: [], Blue: [], Yellow: [], Green: []};
+  for (var color in pathParts) {
+    var pos = Position.fromData(color, -1, -1);
+    while (pos.movesLeft(1) > 0) {
+      paths[color].push([pos.row, pos.column]);
+      pos.step();
+    }
+  }
+
+  var SimplePosition = new Class({
+    initialize: function(color, row, column) {
+      this.path = paths[color];
+      this.index = 0;
+      while (this.index < this.path.length && (this.path[this.index][0] != row || this.path[this.index][1] != column))
+        this.index++;
+
+      this.__defineGetter__('row', function() { return this.path[this.index][0]; });
+      this.__defineGetter__('column', function() { return this.path[this.index][1]; });
+    },
+
+    reset: function() { this.index = 0; },
+    movesLeft: function() {
+      return (this.path.length - this.index - 1);
+    },
+    step: function() {
+      if (this.movesLeft() == 0) {
+        throw Error('Don\'t know where to go');
+      }
+      this.index++;
+      console.log('SimplePosition#step: ', this.path[this.index]);
+    },
+    stepBack: function() {
+      if (this.index == 1) {
+        throw Error('Don\'t know where to go');
+      }
+      this.index--;
+    }
+  });
 
   var RulesRunData = new Class({
     initialize: function(game, piece, position) {
@@ -183,6 +226,14 @@ define(['mongoose'], function(mongoose) {
         this.position.step();
         this.updated(this.piece);
       }
+      console.log('RulesRunData#step piece: ', [this.piece.row, this.piece.column]);
+    },
+
+    stepBack: function() {
+      if (!this.done) {
+        this.position.stepBack();
+        this.updated(this.piece);
+      }
     },
 
     updated: function(piece) {
@@ -196,9 +247,9 @@ define(['mongoose'], function(mongoose) {
      * @param rules
      * @param game Model.Game
      * @param piece Model.Piece
-     * @param position Position
+     * @param position SimplePosition
      *
-     * @return Position|Error
+     * @return [SimplePosition]|Error
      */
     run: function(rules, game, piece, position) {
       var data = new RulesRunData(game, piece, position);
@@ -235,17 +286,33 @@ define(['mongoose'], function(mongoose) {
       }
     },
 
-    noOverstepping: function(data) {
-      if (data.position.movesLeft(data.game.dice) < data.game.dice)
-        return Error('NO_OVERSTEPPING');
-      return data;
-    },
-
-    stepNoDivision: function(data) {
-      for (var i = 0; i < data.game.dice; i++) {
-        data.step();
+    overstepping: function(allow) {
+      if (allow) {
+        return function(data) {
+          var i, limit = Math.min(data.game.dice, data.position.movesLeft());
+          for (i = 0; i < limit; i++) {
+            data.step();
+            console.log('step');
+          }
+          while (i < data.game.dice) {
+            console.log('back');
+            data.stepBack();
+            i++;
+          }
+          return data;
+        };
+      } else {
+        return function(data)
+        {
+          if (data.position.movesLeft() < data.game.dice)
+            return Error('NO_OVERSTEPPING');
+          for (var i = 0; i < data.game.dice; i++) {
+            data.step();
+          }
+          return data;
+        };
       }
-      return data;
+
     },
 
     takeOnSameField: function(data) {
@@ -292,12 +359,11 @@ define(['mongoose'], function(mongoose) {
 
     move: function(pieceId) {
       var piece = this.model.pieces.id(pieceId);
-      var pos = Position.fromPair(piece.color, piece.row.toInt(), piece.column.toInt());
+      var pos = new SimplePosition(piece.color, piece.row.toInt(), piece.column.toInt());
 
       var rules = [
         Rules.startOn(6),
-        Rules.noOverstepping,
-        Rules.stepNoDivision,
+        Rules.overstepping(true),
         //Rules.noTakeOnStartingPosition,
         Rules.takeOnSameField,
         Rules.noDoubling,
