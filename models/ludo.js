@@ -421,7 +421,7 @@ define(['mongoose'], function(mongoose) {
     againOn: function(numbers) {
       if (typeOf(numbers) !== 'Array') numbers = [numbers];
       return function(data) {
-        data.game.again =  numbers.contains(data.game.dice.toInt);
+        data.game.again =  numbers.contains(data.game.dice.toInt());
         data.game.dice = null;
         return data;
       };
@@ -509,6 +509,7 @@ define(['mongoose'], function(mongoose) {
 
     start: function() {
       if (this.model.started) return Error('GAME_STARTED');
+      if (this.model.players.length < 1) return Error('NO_PLAYERS');
       this.model.started = true;
       this.model.next = this.model.players[ Math.floor(Math.random() * this.model.players.length) ].id;
       this.model.save();
@@ -540,7 +541,7 @@ define(['mongoose'], function(mongoose) {
 
       var rules = [
         Rules.startOn(6),
-        Rules.overstepping(true),
+        Rules.overstepping(false),
         Rules.takeOnSameField,
         Rules.noDoubling,
 
