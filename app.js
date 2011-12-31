@@ -102,7 +102,7 @@ requirejs(['./Router', './controllers/index'], function(Router, controllers) {
       return function(data) {
         sessionStore.get(socket.handshake.sessionID, function (err, _session) {
           if (err || !_session) {
-            socket.emit('error', {type: 'NO_SESSION', message: 'No session found'});
+            socket.emit('error', {type: 'NO_SESSION', message: 'No session found', err: err});
             if (socket.disconnected) {
               socket.get('last_session', function(err, session) {
                 if (session && !err) handler(data, session, socket);
