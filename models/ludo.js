@@ -515,7 +515,10 @@ define(['mongoose'], function(mongoose) {
     },
 
     skip: function(userId) {
-      var ret = Rules.run([Rules.started, Rules.ownTurn(userId), Rules.nextPlayer], this.model, null, null);
+      var ret = Rules.run([Rules.started, Rules.ownTurn(userId)], this.model, null, null);
+      if (ret.name === 'Error') return ret;
+
+      ret = Rules.run([Rules.nextPlayer], this.model, null, null);
       if (ret.name === 'Error') return ret;
 
       this.model.dice = null;
