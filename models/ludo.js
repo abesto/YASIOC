@@ -226,7 +226,6 @@ define(['mongoose'], function(mongoose) {
         this.position.step();
         this.updated(this.piece);
       }
-      console.log('RulesRunData#step piece: ', [this.piece.row, this.piece.column]);
     },
 
     stepBack: function() {
@@ -272,7 +271,7 @@ define(['mongoose'], function(mongoose) {
     startOn: function(numbers) {
       if (typeOf(numbers) !== "Array") numbers = [numbers];
       return function(data) {
-        if (data.position.leg == 'initial') {
+        if (data.position.row == -1) {
           if (!numbers.contains(data.game.dice.toInt())) {
             return Error('START_ON:'+numbers.join(','));
           } else {
