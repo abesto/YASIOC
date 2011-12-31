@@ -18,8 +18,27 @@ define(['mongoose'], function(mongoose) {
   Schema.Game = new mongoose.Schema({
     players: [Schema.Player],
     pieces: [Schema.Piece],
+    started: {type: Boolean, 'default': false},
     next: String,
-    dice: Number
+    dice: {type: Number, 'default': null}
+  });
+
+  Schema.Game.method('playerColor', function(userId) {
+    for (var i = 0; i < this.players.length; i++) {
+      if (this.players[i].id == userId) {
+        return this.players[i].color;
+      }
+    }
+    return null;
+  });
+
+  Schema.Game.method('colorPlayer', function(color) {
+    for (var i = 0; i < this.players.length; i++) {
+      if (this.players[i].color == color) {
+        return this.players[i].id;
+      }
+    }
+    return null;
   });
 
   var Model = {};
@@ -202,7 +221,6 @@ define(['mongoose'], function(mongoose) {
         throw Error('Don\'t know where to go');
       }
       this.index++;
-      console.log('SimplePosition#step: ', this.path[this.index]);
     },
     stepBack: function() {
       if (this.index == 1) {
@@ -262,12 +280,44 @@ define(['mongoose'], function(mongoose) {
 
       if (data.name === 'Error') return data;
 
-      piece.row = data.position.row;
-      piece.column = data.position.column;
+      if (piece) {
+        piece.row = data.position.row;
+        piece.column = data.position.column;
+      }
 
       return data.updatedPieces;
     },
 
+    isValid: function(rules, game, piece, position) {
+      var ret = Rules.run(rules, Object.clone(game), Object.clone(piece), Object.clone(position));
+      return ret.name !== 'Error';
+    },
+
+    started: function(data) {
+      if (!data.game.started) return Error('NOT_STARTED');
+      return data;
+    },
+
+    /** Can only move the players own piece */
+    ownPiece: function(userId) {
+      return function(data) {
+        var color = data.game.playerColor(userId);
+        if (color === null) return Error('NOT_IN_GAME');
+        if (color != data.piece.color) return Error('NOT_YOUR_PIECE');
+        return data;
+      }
+    },
+
+    ownTurn: function(userId) {
+      return function(data) {
+        var player = data.game.playerColor(userId);
+        if (color === null) return Error('NOT_IN_GAME');
+        if (userId != data.game.next) return Error('NOT_YOUR_TURN');
+        return data;
+      }
+    },
+
+    /** Can only start a new piece after having thrown one of the numbers specified */
     startOn: function(numbers) {
       if (typeOf(numbers) !== "Array") numbers = [numbers];
       return function(data) {
@@ -285,16 +335,15 @@ define(['mongoose'], function(mongoose) {
       }
     },
 
+    /** If allow, then steps past the end of the board will be stepped backwards. If not, such moves are illegal. */
     overstepping: function(allow) {
       if (allow) {
         return function(data) {
           var i, limit = Math.min(data.game.dice, data.position.movesLeft());
           for (i = 0; i < limit; i++) {
             data.step();
-            console.log('step');
           }
           while (i < data.game.dice) {
-            console.log('back');
             data.stepBack();
             i++;
           }
@@ -314,6 +363,7 @@ define(['mongoose'], function(mongoose) {
 
     },
 
+    /** Take the 'first' opposing piece on the field the piece moves onto */
     takeOnSameField: function(data) {
       for (var i in data.game.pieces) {
         var piece = data.game.pieces[i];
@@ -327,6 +377,7 @@ define(['mongoose'], function(mongoose) {
       return data;
     },
 
+    /** Only one piece of a color on a single field */
     noDoubling: function(data) {
       for (var i in data.game.pieces) {
         var piece = data.game.pieces[i];
@@ -334,7 +385,56 @@ define(['mongoose'], function(mongoose) {
           return Error('FIELD_NOT_EMPTY');
       }
       return data;
+    },
+
+    nextPlayerIf: function(andConditions) {
+      if (typeOf(andConditions) !== 'Array') andConditions = [andConditions];
+      return function(data) {
+        // If any of the conditions fail, do nothing
+        for (var i = 0; i < andConditions.length; i++) {
+          if (!andConditions[i](data)) return data;
+        }
+
+        // All conditions passed, next player is up
+        var colorIndex = colors.indexOf(data.piece.color), nextColor;
+        do {
+          nextColor = colors[ (++colorIndex) % colors.length ];
+          data.game.next = data.game.colorPlayer(nextColor);
+        } while (data.game.next === null);
+
+        return data;
+      }
+    },
+
+    diceNotYetRolled: function(data) {
+      if (data.game.dice != null) return Error('ALREADY_ROLLED');
+      return data;
+    },
+
+    rollDice: function(max) {
+      return function(data) {
+        data.game.dice = Math.ceil(Math.random() * max);
+        return data;
+      }
+    },
+
+    againOn: function(numbers) {
+      if (typeOf(numbers) !== 'Array') numbers = [numbers];
+      return function(data) {
+        data.game.again =  numbers.contains(data.game.dice.toInt);
+        data.game.dice = null;
+        return data;
+      };
     }
+  };
+
+  Rules.nextPlayer = Rules.nextPlayerIf([]);
+
+  Rules.nextPlayerIf.notSamePlayerAgain = function(data) { return !data.game.again; };
+  Rules.nextPlayerIf.noValidMoves = function(rules) {
+    return function(data) {
+      
+    };
   };
 
   var LudoInterface = new Class({
@@ -350,22 +450,87 @@ define(['mongoose'], function(mongoose) {
       return this.model;
     },
 
-    rollDice: function() {
-      this.model.dice = Math.ceil(Math.random() * 6);
+    rollDice: function(userId) {
+      var rules = [
+        Rules.started,
+        Rules.ownTurn(userId),
+        Rules.diceNotYetRolled,
+        Rules.rollDice(6)
+      ];
+
+      var result = Rules.run(rules, this.model, null, null);
+
+      if (result.name === 'Error') return result;
       this.model.save();
-      return this.model.dice;
+      return this.model.dice.toInt();
     },
 
-    move: function(pieceId) {
+    join: function(userId, color) {
+      if (this.model.started) return Error('GAME_STARTED');
+
+      var i;
+      for (i = 0; i < this.model.players.length; i++) {
+        if (this.model.players[i].id == userId) return Error('ALREADY_JOINED');
+        if (this.model.players[i].color == color) return Error('COLOR_TAKEN');
+      }
+
+      var player = new Model.Player, ret = [];
+      player.id = userId;
+      player.color = color;
+      for (i = 0; i < 4; i++) {
+        var piece = new Model.Piece();
+        piece.color = color;
+        piece.row = -1;
+        piece.column = -1;
+        this.model.pieces.push(piece);
+        ret.push(piece);
+      }
+      this.model.players.push(player);
+
+      this.model.save();
+      return ret;
+    },
+
+    leave: function(userId) {
+      var color = this.model.playerColor(userId);
+      if (color === null) return Error('NOT_IN_GAME');
+
+      var ret = [];
+      for (var i = 0; i < this.model.pieces.length && ret.length < 4; i++) {
+        if (this.model.pieces[i].color == color) {
+          ret.push(this.model.pieces[i]._id);
+          this.model.pieces[i].remove();
+        }
+      }
+
+      this.model.save();
+      return ret;
+    },
+
+    start: function() {
+      if (this.model.started) return Error('GAME_STARTED');
+      this.model.started = true;
+      this.model.next = this.model.players[ Math.floor(Math.random() * this.model.players.length) ].id;
+      this.model.save();
+    },
+
+    move: function(pieceId, userId) {
       var piece = this.model.pieces.id(pieceId);
       var pos = new SimplePosition(piece.color, piece.row.toInt(), piece.column.toInt());
 
       var rules = [
+        Rules.started,
+
+        Rules.ownTurn(userId),
+        Rules.ownPiece(userId),
+
         Rules.startOn(6),
         Rules.overstepping(true),
-        //Rules.noTakeOnStartingPosition,
         Rules.takeOnSameField,
         Rules.noDoubling,
+
+        Rules.againOn(6),
+        Rules.nextPlayerIf( Rules.nextPlayerIf.notSamePlayerAgain )
       ];
 
       var result = Rules.run(rules, this.model, piece, pos);
@@ -379,21 +544,8 @@ define(['mongoose'], function(mongoose) {
 
   return {
     /* players: {color: id} */
-    create: function(players, callback) {
+    create: function(callback) {
       var model = new Model.Game();
-      Object.each(players, function(id, color) {
-        var player = new Model.Player(), i, piece;
-        player.color = color;
-        player.id = id;
-        model.players.push(player);
-        for (i = 0; i < 4; i++) {
-          piece = new Model.Piece();
-          piece.color = color;
-          piece.row = -1;
-          piece.column = -1;
-          model.pieces.push(piece);
-        }
-      });
       model.save(function(err, doc) {
         callback(err, new LudoInterface(doc));
       });

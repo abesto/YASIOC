@@ -1,14 +1,16 @@
-define(['models/ludo'], function(Model) {
+define(['models/ludo', './Client'], function(Model, Client) {
   var controller = {};
 
-  function withModel(callback) {
+  function withModelAndClient(callback) {
     return function (data, session, socket) {
       Model.load(data.id, function(err, model) {
         if (err) {
           this.logger.warn(err);
           socket.emit('error', err);
         } else {
-          callback(model, data, session, socket);
+          Client.withClient(function(client, data, session, socket) {
+            callback(model, client, data, session, socket);
+          })(data, session, socket);
         }
       }.bind(controller))
     };
@@ -21,13 +23,30 @@ define(['models/ludo'], function(Model) {
     }
   };
 
+  function channel(data) { return ['ludo', data.id];}
+
   controller.sio = {
-    join: withModel(function(model, data, session, socket) {
-      socket.emit('gamestate', model.getState());
+    join: withModelAndClient(function(model, client, data, session, socket) {
+      client.respond('gamestate', model.getState());
+      client.join( channel(data) );
+    }),
+
+    'choose-color': withModelAndClient(function(model, client, data, session) {
+      var res = model.join(session.user._id, data.color);
+      if (res.name === 'Error') client.respond('error', {cause: res.message});
+      else res.forEach(function(piece) {
+        client.send('move', {piece: piece}, channel(data));
+      });
+    }),
+
+    start: withModelAndClient(function(model, client, data) {
+      var ret = model.start();
+      if (ret && ret.name == 'Error') client.respond('error', {cause: ret.message});
+      else client.send('start', {}, channel(data));
     }),
 
     create: function(data, session, socket) {
-      Model.create({'Red': session.user.name, 'Green': session.user.name}, function(err, model) {
+      Model.create(function(err, model) {
         if (err) {
           this.logger.warn(err);
           socket.emit('error', err);
@@ -37,17 +56,20 @@ define(['models/ludo'], function(Model) {
       }.bind(this));
     },
 
-    'roll-dice': withModel(function(model, data, session, socket) {
-      socket.emit('dice-roll', {value: model.rollDice()});
+    'roll-dice': withModelAndClient(function(model, client, data, session, socket) {
+      var ret = model.rollDice(session.user._id);
+      if (ret && ret.name === 'Error') client.respond('error', {cause: ret.message});
+      else  client.send('dice-roll', {value: ret}, channel(data));
     }),
 
-    move: withModel(function(model, data, session, socket) {
-      var ret = model.move(data.piece);
-      if (ret.name === 'Error') socket.emit('invalid-move', {cause: ret.message});
+    move: withModelAndClient(function(model, client, data, session, socket) {
+      var ret = model.move(data.piece, session.user._id);
+      if (ret.name === 'Error') client.respond('invalid-move', {cause: ret.message});
       else {
         ret.forEach(function(piece) {
-          socket.emit('move', {piece: piece});
+          client.send('move', {piece: piece}, channel(data));
         });
+        client.send('dice-roll', {value: null}, channel(data));
       }
     })
   };

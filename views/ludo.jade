@@ -1,8 +1,16 @@
 script(type='text/javascript', src='javascripts/lib/require.js', data-main='javascripts/ludo.js')
 link(type='text/css', href='/stylesheets/ludo/common.css', rel='stylesheet')
 div.ludo
-  div Game ID:
-    code.game-id
-  div.dice-container
-    div.dice 0
-    input.roll-dice(type='button', value='Roll')
+  div.controls
+    input.create(type='button', value='Új játék')
+    br
+    label.join-label Kapcsolódás játékhoz:
+      input.join-id(type='text')
+      input.join-button(type='button', value='OK')
+  div.game.hidden
+    p Game ID:
+      code.game-id
+    div.dice-container.hidden
+      div.dice 0
+      input.roll-dice(type='button', value='Dobás')
+    input.start(type='button', value='Indítás')
