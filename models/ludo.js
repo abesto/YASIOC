@@ -530,12 +530,15 @@ define(['mongoose'], function(mongoose) {
       var piece = this.model.pieces.id(pieceId);
       var pos = new SimplePosition(piece.color, piece.row.toInt(), piece.column.toInt());
 
-      var rules = [
+      var ret = Rules.run([
         Rules.started,
-
         Rules.ownTurn(userId),
-        Rules.ownPiece(userId),
+        Rules.ownPiece(userId)
+      ], this.model, piece, pos
+      );
+      if (ret.name === 'Error') return ret;
 
+      var rules = [
         Rules.startOn(6),
         Rules.overstepping(true),
         Rules.takeOnSameField,
