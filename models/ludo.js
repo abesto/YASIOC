@@ -387,8 +387,8 @@ define(['mongoose'], function(mongoose) {
       return data;
     },
 
-    nextPlayerIf: function(andConditions) {
-      if (typeOf(andConditions) !== 'Array') andConditions = [andConditions];
+    nextPlayerIf: function() {
+      var andConditions = Array.slice(arguments);
       return function(data) {
         // If any of the conditions fail, do nothing
         for (var i = 0; i < andConditions.length; i++) {
@@ -396,7 +396,7 @@ define(['mongoose'], function(mongoose) {
         }
 
         // All conditions passed, next player is up
-        var colorIndex = colors.indexOf(data.piece.color), nextColor;
+        var colorIndex = colors.indexOf( data.game.playerColor(data.game.next) ), nextColor;
         do {
           nextColor = colors[ (++colorIndex) % colors.length ];
           data.game.next = data.game.colorPlayer(nextColor);
@@ -428,7 +428,7 @@ define(['mongoose'], function(mongoose) {
     }
   };
 
-  Rules.nextPlayer = Rules.nextPlayerIf([]);
+  Rules.nextPlayer = Rules.nextPlayerIf();
 
   Rules.nextPlayerIf.notSamePlayerAgain = function(data) { return !data.game.again; };
   Rules.nextPlayerIf.noValidMoves = function(rules) {
@@ -512,6 +512,15 @@ define(['mongoose'], function(mongoose) {
       this.model.started = true;
       this.model.next = this.model.players[ Math.floor(Math.random() * this.model.players.length) ].id;
       this.model.save();
+    },
+
+    skip: function(userId) {
+      var ret = Rules.run([Rules.started, Rules.ownTurn(userId), Rules.nextPlayer], this.model, null, null);
+      if (ret.name === 'Error') return ret;
+
+      this.model.dice = null;
+      this.model.save();
+      return ret;
     },
 
     move: function(pieceId, userId) {

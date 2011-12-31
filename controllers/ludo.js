@@ -45,6 +45,12 @@ define(['models/ludo', './Client'], function(Model, Client) {
       else client.send('start', {}, channel(data));
     }),
 
+    skip: withModelAndClient(function(model, client, data, session) {
+      var ret = model.skip(session.user._id);
+      if (ret.name === 'Error') client.respond('error', {cause: ret.message});
+      else  client.send('dice-roll', {value: ret}, channel(data));
+    }),
+
     create: function(data, session, socket) {
       Model.create(function(err, model) {
         if (err) {

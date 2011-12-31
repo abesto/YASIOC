@@ -3,7 +3,8 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
   var startingPositions = {
     Red: [[0,7], [0,8], [1,7], [1,8]],
     Green: [[3,0], [2,0], [3,1], [2,1]],
-    Blue: [[7,10],[8,10],[7,9],[8,9]]
+    Blue: [[7,10],[8,10],[7,9],[8,9]],
+    Yellow: [[10,3],[10,2],[9,3],[9,2]]
   };
   var Game = {};
   var ui;
@@ -65,6 +66,7 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
     socket.on('dice-roll', function(data) { ui.dice.set('text', data.value); });
     ui.start.addClass('hidden');
     ui.dice_container.removeClass('hidden');
+    ui.skip.addEvent('click', function() { socket.emit('skip', {id: Game.id}); });
   }
 
   function join(id)
@@ -114,6 +116,7 @@ define(['Board', '/socket.io/socket.io.js'], function(Board) {
     ui.create = ui.controls.getElements('.create')[0];
     ui.join_button = ui.controls.getElements('.join-button')[0];
     ui.join_id = ui.controls.getElements('.join-id')[0];
+    ui.skip = ui.dice_container.getElements('.skip')[0];
 
     ui.start = ui.game.getElements('.start')[0];
 
