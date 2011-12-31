@@ -421,7 +421,8 @@ define(['mongoose'], function(mongoose) {
     againOn: function(numbers) {
       if (typeOf(numbers) !== 'Array') numbers = [numbers];
       return function(data) {
-        data.game.again =  numbers.contains(data.game.dice.toInt());
+        if (!data.game.dice) data.game.again = false;
+        else data.game.again =  numbers.contains(data.game.dice.toInt());
         data.game.dice = null;
         return data;
       };
