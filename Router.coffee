@@ -17,35 +17,35 @@ define ['mootools'], ->
 
   getAuthFilters = (actions, actionName) ->
     names = actions.authFilters?[actionName] ? defaultAuthFilters
-    return names.map((name) -> authFilters[name]);
+    return (authFilters[name] for name in names)
 
   runAuthFilters = (session, actions, actionName, filters) ->
     filters = filters || getAuthFilters(actions, actionName)
     for filter in filters
       ret = filter(session)
-      if (!ret.valid) then ret
-    {valid: true}
+      if (!ret.valid) then return ret
+    return {valid: true}
 
   bindHttpAction = (opts) ->
+    {method: method, actionName: actionName} = opts
     # Check that the binding is valid
-    if (not opts.controller[opts.method][opts.actionName]?)
-      opts.logger.warn "Action(#{opts.method}) #{opts.controllerName}.#{opts.actionName} not found"
-    else if (!(opts.controller[opts.method][opts.actionName] instanceof Function))
-      opts.logger.warn "Action(#{opts.method}) #{opts.controllerName}.#{opts.actionName} is not a function"
+    if (not opts.controller[method][actionName]?)
+      opts.logger.warn "Action(#{method}) #{opts.controllerName}.#{actionName} not found"
+    else if (!(opts.controller[method][actionName] instanceof Function))
+      opts.logger.warn "Action(#{method}) #{opts.controllerName}.#{actionName} is not a function"
     else
       # It is.
-      url = opts.url ? "/#{opts.controllerName}/#{opts.actionName}"
+      url = opts.url ? "/#{opts.controllerName}/#{actionName}"
       # Run wrapper only once
-      wrapped = opts.wrapper(opts.controller[opts.method][opts.actionName]).bind(opts.controller)
+      wrapped = opts.wrapper(opts.controller[method][actionName]).bind(opts.controller)
 
-      opts.app[opts.method] url, (req, res) ->
+      opts.app[method] url, (req, res) ->
         # Run filters
-        auth = runAuthFilters req.session, opts.controller[opts.method], opts.actionName
+        auth = runAuthFilters req.session, opts.controller[method], actionName
         if !auth.valid
         # Filters returned not valid, log it
-          opts.controller.logger.debug(
-            "Permission check failed for #{opts.method} #{url} (#{opts.controllerName}.#{opts.actionName}): " +
-            "#{auth.type} #{auth.message}"
+          opts.logger.debug(
+            "Permission check failed for #{method} #{url} (#{opts.controllerName}.#{actionName}): #{auth.type}"
           )
           # If the filter specified a callback, run it
           if auth.httpCallback?
@@ -58,7 +58,8 @@ define ['mootools'], ->
         else
           wrapped(req, res)
 
-    opts.logger.debug "Router mapping: #{opts.method} #{url} -> #{opts.controllerName}.#{opts.actionName}"
+    opts.controller.logger = opts.logger
+    opts.logger.debug "Router mapping: #{method} #{url} -> #{opts.controllerName}.#{actionName}"
   # EOF bindHttpAction
 
   validHttpMethod = (method, logger) -> method in httpMethods
@@ -73,6 +74,8 @@ define ['mootools'], ->
           getAuthFilters(controller['sio'], actionName),
           runAuthFilters
         )
+
+      controller.logger = @logger
 
       # And call initialize if present
       if controller.sio.initialize?
@@ -108,11 +111,11 @@ define ['mootools'], ->
       ## Default controller
       for method, controllerName of defaultControllers
         # sio "method" is handled separately in function routeSocketIO
-        if method == 'sio' then continue
+        if method in ['sio', 'logger'] then continue
 
         # HTTP method is valid
         if not validHttpMethod method
-          @logger.warn "HTTP method #{method} (note that all method names must be lowercase)"
+          @logger.warn "Unknown HTTP method \"#{method}\" (note that all method names must be lowercase)"
           continue
 
         bindOptions.method = method;
@@ -138,9 +141,9 @@ define ['mootools'], ->
         bindOptions.controller = controller
 
         for method, actions of bindOptions.controller
-          if method == 'sio' then continue
+          if method in ['sio', 'logger'] then continue
           if !validHttpMethod method
-            @logger.warn "HTTP method #{method} (note that all method names must be lowercase)"
+            @logger.warn "Unknown HTTP method #{method} (note that all method names must be lowercase)"
             continue
 
           bindOptions.method = method;

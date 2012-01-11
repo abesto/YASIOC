@@ -39,6 +39,7 @@ app.configure 'development', ->
 
   winston.add winston.transports.Console, {level: 0, colorize: true, timestamp: true}
   winston.loggers.add 'Socket.IO', {console: {level: 0, colorize: true, timestamp: true}}
+  winston.loggers.add 'app', {console: {level: 0, colorize: true, timestamp: true}}
 
 app.configure 'production', ->
   logOptions =
@@ -55,6 +56,14 @@ app.configure 'production', ->
       level: 2
       timestamp: true
       filename: 'SocketIO.log'
+      maxsize: 1024 * 100
+      maxFiles: 3
+  winston.loggers.add 'app',
+    console: logOptions,
+    file:
+      level: 2
+      timestamp: true
+      filename: 'app.log'
       maxsize: 1024 * 100
       maxFiles: 3
 
