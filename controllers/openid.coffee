@@ -1,4 +1,4 @@
-define ['openid', 'models/user', 'config'], (openid, userModel, config) ->
+define ['openid', 'cs!models/user', 'cs!config'], (openid, userModel, config) ->
   extensions = [
     new openid.AttributeExchange
       "http://axschema.org/namePerson/friendly": "required",

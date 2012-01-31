@@ -1,4 +1,4 @@
-define ['fs', 'cs!./Client', 'models/user', 'mootools'], (fs, Client, userModel) ->
+define ['fs', 'cs!./Client', 'cs!models/user', 'mootools'], (fs, Client, userModel) ->
   withClient = Client.withClient
 
   chatlog = (type, name, message) ->
