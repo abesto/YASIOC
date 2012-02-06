@@ -26,6 +26,7 @@ requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!c
       store: sessionStore
       key: 'express.sid'
 
+    app.use require('connect-assets')()
     app.use require('stylus').middleware({ src: __dirname + '/public' })
     app.use app.router
     app.use express['static'](__dirname + '/public')
