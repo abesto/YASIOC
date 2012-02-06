@@ -1,8 +1,8 @@
 requirejs = require 'requirejs'
 requirejs.config {nodeRequire: require}
 
-requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!config'],
-(express, sio, winston, mongoose, MongoStore, config) ->
+requirejs ['fs', 'path', 'express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!config'],
+(fs, path, express, sio, winston, mongoose, MongoStore, config) ->
   app = express.createServer()
   sio = sio.listen app
   sessionStore = null
@@ -26,7 +26,7 @@ requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!c
       store: sessionStore
       key: 'express.sid'
 
-    app.use require('connect-assets')()
+
     app.use require('stylus').middleware({ src: __dirname + '/public' })
     app.use app.router
     app.use express['static'](__dirname + '/public')
@@ -48,7 +48,7 @@ requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!c
      timestamp: true
 
     app.use express.errorHandler()
-    winston.remove winston.transports.Console
+    #winston.remove winston.transports.Console
     winston.add winston.transports.Console, logOptions
     winston.loggers.add 'Socket.IO',
       console: logOptions,
@@ -67,6 +67,19 @@ requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!c
         maxsize: 1024 * 100
         maxFiles: 3
 
+  # Cache compiled CoffeeScript and Stylus files
+  app.use require('connect-assets')(buildFilenamer: (file) -> file)
+  cacheAssets = (dir) ->
+    absoluteDir = __dirname + '/assets' + dir
+    files = fs.readdirSync absoluteDir
+    for file in files
+      if fs.statSync(absoluteDir + '/' + file).isDirectory() then cacheAssets(dir + '/' + file)
+      else
+        winston.debug "Caching asset file assets#{dir}/#{file}"
+        if path.extname(file) in ['.js', '.coffee'] then js dir + '/' + file[0...file.indexOf '.']
+        if path.extname(file) in ['.styl', '.css'] then css dir + '/' + file[0...file.indexOf '.']
+  cacheAssets ''
+
   sio.configure ->
     sio.set 'logger', winston.loggers.get('Socket.IO')
     sio.set 'transports', [
@@ -81,8 +94,8 @@ requirejs ['express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!c
   sio.set 'authorization', (data, accept) ->
     if data.headers.cookie
       data.cookie = require('connect').utils.parseCookie(data.headers.cookie)
-      data.sessionID = data.cookie['express.sid'];
-      data.sessionStore = sessionStore;
+      data.sessionID = data.cookie['express.sid']
+      data.sessionStore = sessionStore
       sessionStore.get data.sessionID, (err, session) ->
         if (err || !session)
           accept err, false

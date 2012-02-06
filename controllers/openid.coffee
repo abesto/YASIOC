@@ -1,4 +1,4 @@
-define ['openid', 'cs!models/user', 'cs!config'], (openid, userModel, config) ->
+define ['openid', 'cs!models/user', 'cs!config', 'winston'], (openid, userModel, config, winston) ->
   extensions = [
     new openid.AttributeExchange
       "http://axschema.org/namePerson/friendly": "required",
@@ -48,7 +48,7 @@ define ['openid', 'cs!models/user', 'cs!config'], (openid, userModel, config) ->
                 res.writeHead 302, {'Location': '/'}
               else
                 res.writeHead 302, {Location: '/openid'}
-              res.end();
+              res.end()
 
       index: (req, res) -> res.render 'openid'
 

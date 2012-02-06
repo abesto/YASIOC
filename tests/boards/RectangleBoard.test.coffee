@@ -1,4 +1,4 @@
-define ['cs!models/boards/RectangleBoard'], (Board) -> {
+define ['cs!assets/js/boards/RectangleBoard'], (Board) -> {
   setUp: (callback) ->
     @board = new Board
       rows: 8

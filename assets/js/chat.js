@@ -44,7 +44,7 @@ define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.j
     current: null,
     apply: function(name) {
       if (!(name in this.cache))
-        this.cache[name] = Asset.css('/stylesheets/chat/' + name + '.css', {id: 'css-chat'});
+        this.cache[name] = Asset.css('/css/chat/' + name + '.css', {id: 'css-chat'});
 
       if (this.current !== null)
         this.current.dispose();

@@ -1,4 +1,4 @@
-define ['cs!tests/utils/CallCounter', 'cs!models/moves/AbsolutePath'], (CallCounter, AbsolutePath) ->
+define ['cs!tests/utils/CallCounter', 'cs!assets/js/moves/AbsolutePath'], (CallCounter, AbsolutePath) ->
   board1D = { field: (i) -> if not @[i] then @[i] = { seq: i } else @[i] }
   board2D = { field: (i,j) -> key = "#{i},#{j}"; if not @[key] then @[key] = { i: i, j: j } else @[key] }
 

@@ -4,7 +4,7 @@ define ['mootools'], ->
       'mongo-url': 'mongodb://localhost/games',
       'openid-verify-url': 'http://localhost:8080/openid/verify'
 
-  production: Object.merge({}, config.development,
+  config.production = Object.merge({}, config.development,
     'openid-verify-url': 'http://abesto.net:8080/openid/verify'
   )
 
