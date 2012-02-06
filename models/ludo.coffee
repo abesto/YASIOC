@@ -1,8 +1,8 @@
 define ['mongoose', 'mootools'], (mongoose) ->
-  colors = ['Red', 'Blue', 'Yellow', 'Green'];
+  colors = ['Red', 'Blue', 'Yellow', 'Green']
 
-  Schema = {};
-  Schema.Color = { type: String, 'enum': colors };
+  Schema = {}
+  Schema.Color = { type: String, 'enum': colors }
   Schema.Piece = new mongoose.Schema
     row: Number
     column: Number
@@ -29,7 +29,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
       if player.color == color then return player.id
     return null
 
-  Model = {};
+  Model = {}
   Model.Piece = mongoose.model 'LudoPiece', Schema.Piece
   Model.Player = mongoose.model 'LudoPlayer', Schema.Player
   Model.Game = mongoose.model 'LudoGame', Schema.Game
@@ -64,26 +64,26 @@ define ['mongoose', 'mootools'], (mongoose) ->
 
     setRowCol: (row, column) ->
       if row == -1 && column == -1
-        return @reset();
+        return @reset()
 
       for color, colorPaths of pathParts
         for leg, path of colorPaths
           for index, position of path
             if position[0] == row && position[1] == column
-              @row = row;
-              @column = column;
-              @pathColor = color;
-              @leg = leg;
-              return @index = index.toInt();
+              @row = row
+              @column = column
+              @pathColor = color
+              @leg = leg
+              return @index = index.toInt()
 
       throw Error('Unable to find position for row ' + row + ', column ' + column)
 
     # @api private
     setPathInfo: (color, leg, index) ->
-      @pathColor = color;
-      @leg = leg;
-      @index = index;
-      var pair = pathParts[@pathColor][@leg][@index];
+      @pathColor = color
+      @leg = leg
+      @index = index
+      pair = pathParts[@pathColor][@leg][@index]
       @row = pair[0]
       @column = pair[1]
 
@@ -98,7 +98,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
 
     # @api private
     nextLeg: (from) ->
-      ret = {color: from.color, leg: from.leg};
+      ret = {color: from.color, leg: from.leg}
       if ret.leg == 'initial'
         ret.color = @pieceColor
         ret.leg = 'front'
@@ -115,7 +115,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
     # @api public
     movesLeft: (max) ->
       leg = {color: @pathColor, leg: @leg}
-      num = pathParts[leg.color][leg.leg].length - @index - 1;
+      num = pathParts[leg.color][leg.leg].length - @index - 1
       while leg.leg != 'final' && (!max || num < max)
         leg = @nextLeg(leg)
         num += pathParts[leg.color][leg.leg].length
@@ -129,13 +129,13 @@ define ['mongoose', 'mootools'], (mongoose) ->
 
       # Move within a leg
       else if @index + 1 < pathParts[@pathColor][@leg].length
-        @index++;
+        @index++
 
       # Move to next leg
       else
         leg = @nextLeg color: @pathColor, leg: @leg
-        @index = 0;
-        @pathColor = leg.color;
+        @index = 0
+        @pathColor = leg.color
         @leg = leg.leg
 
       # Update row, column
@@ -151,7 +151,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
   # Build full paths using Position class
   paths = Red: [], Blue: [], Yellow: [], Green: []
   for color, colorPaths of pathParts
-    pos = Position.fromData(color, -1, -1);
+    pos = Position.fromData(color, -1, -1)
     while pos.movesLeft(1) > 0
       paths[color].push [pos.row, pos.column]
       pos.step()
@@ -161,7 +161,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
       @path = paths[color]
       @index = 0
       while @index < @path.length && (@path[@index][0] != row || @path[@index][1] != column)
-        @index+
+        @index++
       @__defineGetter__ 'row', -> @path[@index][0]
       @__defineGetter__ 'column', -> @path[@index][1]
 
@@ -170,7 +170,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
     step: ->
       if @movesLeft() == 0
         throw Error('Don\'t know where to go')
-      @index++;
+      @index++
     stepBack: ->
       if  @index == 1
         throw Error('Don\'t know where to go')
@@ -191,7 +191,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
         @stepBack()
         @updated @piece
 
-    updated: (piece) -> if !@updatedPieces.contains(piece) @updatedPieces.push(piece)
+    updated: (piece) -> if !@updatedPieces.contains(piece) then @updatedPieces.push(piece)
 
   Rules =
      # Run a series of "rules" on a piece
@@ -229,13 +229,13 @@ define ['mongoose', 'mootools'], (mongoose) ->
       color = data.game.playerColor(userId)
       if color == null then return Error('NOT_IN_GAME')
       if color != data.piece.color then return Error('NOT_YOUR_PIECE')
-      return data;
+      return data
 
     ownTurn: (userId) -> (data) ->
       player = data.game.playerColor userId
       if color == null then return Error('NOT_IN_GAME')
       if userId != data.game.next then return Error('NOT_YOUR_TURN')
-      return data;
+      return data
 
     # Can only start a new piece after having thrown one of the numbers specified
     startOn: (numbers) ->
@@ -271,7 +271,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
           piece.column = -1
           data.updated(piece)
           break
-      return data;
+      return data
 
     # Only one piece of a color on a single field
     noDoubling: (data) ->
@@ -327,7 +327,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
         Rules.ownTurn(userId),
         Rules.diceNotYetRolled,
         Rules.rollDice(6)
-      ];
+      ]
 
       result = Rules.run rules, @model, null, null
 
@@ -346,10 +346,10 @@ define ['mongoose', 'mootools'], (mongoose) ->
       player.id = userId
       player.color = color
 
-      ret = [];
+      ret = []
 
       for i in [0...4]
-        var piece = new Model.Piece()
+        piece = new Model.Piece()
         piece.color = color
         piece.row = -1
         piece.column = -1
@@ -399,8 +399,8 @@ define ['mongoose', 'mootools'], (mongoose) ->
         Rules.started,
         Rules.ownTurn(userId),
         Rules.ownPiece(userId)
-      ], @model, piece, pos);
-      if ret.name == 'Error' then return ret;
+      ], @model, piece, pos)
+      if ret.name == 'Error' then return ret
 
       rules = [
         Rules.startOn(6),
@@ -410,23 +410,23 @@ define ['mongoose', 'mootools'], (mongoose) ->
 
         Rules.againOn(6),
         Rules.nextPlayerIf( Rules.nextPlayerIf.notSamePlayerAgain )
-      ];
+      ]
 
       result = Rules.run rules, @model, piece, pos
 
-      if result.name == 'Error' then return result;
+      if result.name == 'Error' then return result
 
       @model.save()
       return result
 
   return ret =
     # players: {color: id}
-    create: callback ->
+    create: (callback) ->
       model = (new Model.Game).save
       model.save (err, doc) -> callback err, new LudoInterface(doc)
 
     load: (id, callback) ->
       Model.Game.findById id, (err, doc) ->
         if err then callback err, null
-        else if  !doc then callback 'No shit', doc
+        else if !doc then callback 'No shit', doc
         else callback null, new LudoInterface(doc)

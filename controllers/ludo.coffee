@@ -1,4 +1,4 @@
-define ['functools', 'models/ludo', './Client'], (F, Model, Client) ->
+define ['functools', 'cs!models/ludo', './Client'], (F, Model, Client) ->
   controller = get: {}, sio: {}
 
   # Helper: identifies the game channel
