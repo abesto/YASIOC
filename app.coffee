@@ -26,8 +26,6 @@ requirejs ['fs', 'path', 'express', 'socket.io', 'winston', 'mongoose', 'connect
       store: sessionStore
       key: 'express.sid'
 
-
-    app.use require('stylus').middleware({ src: __dirname + '/public' })
     app.use app.router
     app.use express['static'](__dirname + '/public')
 
@@ -48,7 +46,6 @@ requirejs ['fs', 'path', 'express', 'socket.io', 'winston', 'mongoose', 'connect
      timestamp: true
 
     app.use express.errorHandler()
-    #winston.remove winston.transports.Console
     winston.add winston.transports.Console, logOptions
     winston.loggers.add 'Socket.IO',
       console: logOptions,
