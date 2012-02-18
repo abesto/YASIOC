@@ -1,4 +1,4 @@
-define ['mongoose', 'mootools'], (mongoose) ->
+define ['mongoose'], (mongoose) ->
   UserSchema = new mongoose.Schema
     friendlyName: String,
     fullName: String,
@@ -14,8 +14,8 @@ define ['mongoose', 'mootools'], (mongoose) ->
   class UserInterface
     constructor: (user) ->
       nameProperties = ['friendlyName', 'fullName', 'email']
-      this._id = user._id;
-      this.name = user._id;
+      this.id = user.id
+      this.name = user.id
 
       for prop in nameProperties
         if user[prop]
@@ -23,8 +23,8 @@ define ['mongoose', 'mootools'], (mongoose) ->
           if prop == 'email' then @name = @name.split('@')[0]
           break
 
-  interface = {}
-  interface.getAndClearSessionIds = (userId, callback) ->
+  return {
+    getAndClearSessionIds: (userId, callback) ->
       User.findById userId, ['sessions'], (err, doc) ->
         if !err && doc
           callback err, Array.clone(doc.sessions)
@@ -33,30 +33,34 @@ define ['mongoose', 'mootools'], (mongoose) ->
         else
           callback(err, null)
 
-  interface.login = (data, sessionId, callback) ->
-    if !data.authenticated then throw 'Pass only authenticated OpenID information to User model!'
+    login: (data, sessionId, callback) ->
+      if !data.authenticated then throw 'Pass only authenticated OpenID information to User model!'
 
-    OpenId.findOne {'claimedIdentifier': data.claimedIdentifier}, (err, doc) ->
-      if typeOf(doc) == 'null'
-        user = new User()
-        user[key] = value for key, value of data
-        user.sessions.push(sessionId);
-        user.save();
-
-        openid = new OpenId();
-        openid.claimedIdentifier = data.claimedIdentifier;
-        openid.userId = user._id;
-        openid.save();
-
-        callback null, new UserInterface(user)
-
-      else
-        openid = doc
-        User.findById openid.userId, (err, doc) ->
-          user = doc
+      OpenId.findOne {'claimedIdentifier': data.claimedIdentifier}, (err, doc) ->
+        if doc is null
+          user = new User()
           user[key] = value for key, value of data
-          user.sessions.push(sessionId);
-          user.save();
+          user.sessions.push(sessionId)
+          user.save()
+
+          openid = new OpenId()
+          openid.claimedIdentifier = data.claimedIdentifier
+          openid.userId = user._id
+          openid.save()
+
           callback null, new UserInterface(user)
 
-  return interface
+        else
+          openid = doc
+          User.findById openid.userId, (err, doc) ->
+            user = doc
+            user[key] = value for key, value of data
+            user.sessions.push(sessionId)
+            user.save()
+            callback null, new UserInterface(user)
+
+    findById: (id, callback) ->
+      User.findById id, (err, doc) ->
+        if err then callback err, doc
+        else callback null, new UserInterface(doc)
+  }

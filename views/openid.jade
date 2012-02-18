@@ -2,13 +2,12 @@
 head
   title Sign-in
   link(type='text/css', rel='stylesheet', href='/css/openid.css')
-  script(type='text/javascript', src='/js/lib/mootools.js')
-  script(type='text/javascript', src='/js/lib/mootools-more.js')
-  script(type='text/javascript', src='/js/lib/openid-mootools.js')
+  script(type='text/javascript', src='/js/lib/jquery/jquery.js')
+  script(type='text/javascript', src='/js/lib/openid-jquery.js')
   script(type='text/javascript', src='/js/lib/openid-en.js')
   script(type='text/javascript')
-    window.addEvent('domready', function(){
-      openid.img_path='/images/';
+    $(function(){
+      openid.img_path='/img/';
       openid.init('openid_identifier');
       //openid.setDemoMode(true); //Stops form submission for client javascript-only test purposes
     });

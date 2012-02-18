@@ -1,6 +1,6 @@
-define ['mootools'], ->
+define ->
 
-  channelName = (channel) -> channel.flatten().join('-')
+  channelName = (channel) -> channel.join('-')
 
   class Client
     constructor: (@session, @socket) ->

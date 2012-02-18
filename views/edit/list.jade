@@ -1,0 +1,28 @@
+script(type='text/javascript', src='js/lib/require.js', data-main='js/editor.js')
+div.page-header
+  h1 Select a game to edit
+div.row-fluid
+  div.span10
+    table.table.table-bordered.table-striped
+      thead
+        tr
+          th Name
+          th Description
+          th Created by
+      tbody
+        for game in games
+          tr
+            td
+              a(href='/edit/#{game.id}') #{game.name}
+            td #{game.description}
+            - user = game.owner
+            td!= partial('userpartial')
+      tfoot
+        tr
+          td(colspan=3)
+            form(action='/edit', method='post', style='margin:0')
+              input(type='submit', value='Create new game', style='margin:0').btn.btn-primary
+
+  div.span2
+    | Clicking the name of a game will open it for editing. Games created by others are read-only, but you can make a copy at any time.
+

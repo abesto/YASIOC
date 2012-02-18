@@ -1,4 +1,4 @@
-define ['mongoose', 'mootools'], (mongoose) ->
+define ['mongoose'], (mongoose) ->
   colors = ['Red', 'Blue', 'Yellow', 'Green']
 
   Schema = {}
@@ -281,7 +281,7 @@ define ['mongoose', 'mootools'], (mongoose) ->
       return data
 
     nextPlayerIf: ->
-      andConditions = Array.slice(arguments)
+      andConditions = arguments
       return (data) ->
         # If any of the conditions fail, do nothing
         for condiction in andConditions

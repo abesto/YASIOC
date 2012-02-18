@@ -3,4 +3,18 @@ html
   head
     title Yet another Socket.IO chat
     link(rel='stylesheet', href='/css/style.css')
-  body!= body
+    link(rel='stylesheet', href='/css/bootstrap.css')
+  body
+    div.navbar.navbar-fixed-top
+      div.navbar-inner
+        div.container
+          a.brand(href='/') YASIOC
+          ul.nav
+            li
+              a(href='/chat') Chat
+            li
+              a(href='/ludo') Ludo
+            li
+              a(href='/edit') Edit games
+    div.container-fluid
+      != body

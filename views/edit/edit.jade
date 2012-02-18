@@ -1,0 +1,40 @@
+script(type='text/javascript', src='/js/lib/require.js', data-main='/js/editor.js')
+link(rel='stylesheet', href='/css/editor.css')
+div.page-header
+  h1 Editing 
+    span#game-name #{game.name}
+    | 
+    small 
+      | (id:
+      span#game-id #{game.id}
+      | )
+div.row-fluid
+  div.span10
+    div.tabbable
+      ul.nav.nav-pills
+        li.active
+          a(href='#game', data-toggle='pill') Game
+        li 
+          a(id='boards-pill', href='#boards', data-toggle='pill') Boards
+      div.tab-content 
+        div.tab-pane.active#game
+          form(action='#')
+            label Game name
+              input(name='name', type='text', value='#{game.name}')
+            label Description
+              textarea(name='description') #{game.description}
+            input.btn.btn-primary#game-save(type='button', value='Save')
+            input.btn(type='reset', value='Reset')
+        div.tab-pane#boards
+          div#boards-list
+          div.btn-group
+            a.btn.dropdown-toggle(data-toggle="dropdown", href="#") Add a board 
+              span.caret
+            ul.dropdown-menu
+              li
+                a(href="#", id="add-rectangle-board") Rectangle board
+
+  div.span2#sidebar
+    div#help
+    div#alerts
+

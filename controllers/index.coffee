@@ -1,5 +1,7 @@
-define ['cs!./chat', 'cs!./ludo', 'cs!./openid'], (chat, ludo, openid) ->
-  chat: chat,
-  ludo: ludo,
-  openid: openid
+controllers = ['ludo', 'openid']
 
+define ("cs!./#{controller}" for controller in controllers), (params...) ->
+  ret = {}
+  for controller, index in controllers
+    ret[controller] = params[index]
+  return ret

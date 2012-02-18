@@ -1,4 +1,4 @@
-define ['mootools'], ->
+define ->
   httpMethods = ['get', 'head', 'post', 'put', 'delete', 'options', 'trace', 'connect']
   authFilters =
     any: -> {valid: true}
@@ -41,8 +41,9 @@ define ['mootools'], ->
 
       opts.app[method] url, (req, res) ->
         # Run filters
-        auth = runAuthFilters req.session, opts.controller[method], actionName
-        if !auth.valid
+        #auth = runAuthFilters req.session, opts.controller[method], actionName
+        #if !auth.valid
+        if false
         # Filters returned not valid, log it
           opts.logger.debug(
             "Permission check failed for #{method} #{url} (#{opts.controllerName}.#{actionName}): #{auth.type}"
@@ -118,7 +119,7 @@ define ['mootools'], ->
           @logger.warn "Unknown HTTP method \"#{method}\" (note that all method names must be lowercase)"
           continue
 
-        bindOptions.method = method;
+        bindOptions.method = method
         bindOptions.controllerName = controllerName
         bindOptions.controller = controllers[ bindOptions.controllerName ]
 

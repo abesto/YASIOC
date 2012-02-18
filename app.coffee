@@ -3,7 +3,7 @@ requirejs.config {nodeRequire: require}
 
 requirejs ['fs', 'path', 'express', 'socket.io', 'winston', 'mongoose', 'connect-mongo', 'cs!config'],
 (fs, path, express, sio, winston, mongoose, MongoStore, config) ->
-  app = express.createServer()
+  global.app = app = express.createServer()
   sio = sio.listen app
   sessionStore = null
 
@@ -108,28 +108,6 @@ requirejs ['fs', 'path', 'express', 'socket.io', 'winston', 'mongoose', 'connect
     sio.enable 'browser client gzip'
 
   # Routes, application code entry points
-  requirejs ['cs!Router', 'cs!controllers/index'], (Router, controllers) ->
-    router = new Router
-      socketIOWrapper: (socket, handler, authFilters, runAuthFilters) ->
-        (data) -> sessionStore.get socket.handshake.sessionID, (err, _session) ->
-          if (err || !_session)
-            socket.emit 'error', {type: 'NO_SESSION', message: 'No session found', err: err}
-            if  socket.disconnected
-              socket.get 'last_session', (err, session) ->
-                if (session && !err)
-                  handler(data, session, socket)
-          else
-            session = new express.session.Session socket.handshake, _session
-            auth = runAuthFilters session, null, null, authFilters
-            socket.set 'last_session', session, ->
-              if (!auth.valid)
-                socket.emit 'error', auth
-              else
-                handler data, session, socket
-              session.touch().save()
-
-    router.routeHttp app, controllers, {'get': 'chat'}
-    router.routeSocketIO sio, controllers
-
+  requirejs ['cs!routes/index'], ->
     app.listen 8080
     winston.info 'express server listening'

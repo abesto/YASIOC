@@ -11,7 +11,6 @@ define ->
   class RectangleBoard
     constructor: ({rows: @rows, columns: @columns}) ->
       @_fields = {}
-
       @__defineGetter__ 'fields', -> @rows * @columns
 
     row: (r) -> {column: (c) => @field(r, c)}
@@ -22,6 +21,11 @@ define ->
       key = "#{r},#{c}"
       if key not of @_fields then @_fields[key] = new RectangleField(this, r, c)
       return @_fields[key]
+
+    serialType: -> 'RectangleBoard'
+    serialParams: -> [@row, @column]
+    @serialConstructor: (row, column) -> new RectangleField(rows: row, columns: columns)
+    
 
   return RectangleBoard
 

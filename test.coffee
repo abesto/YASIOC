@@ -2,16 +2,18 @@ requirejs = require 'requirejs'
 requirejs.config {nodeRequire: require}
 requirejs [
   'cs!tests/CallCounter.test'
+  'cs!tests/Serializer.test'
   'cs!tests/boards/RectangleBoard.test'
   'cs!tests/moves/AbsolutePath.test'
-], (CallCounter, RectangleBoard, AbsolutePath) ->
+], (CallCounter, Serializer, RectangleBoard, AbsolutePath) ->
   reporter = require('nodeunit').reporters['default']
   reporter.run
-    'Test utils':
+    TestUtils:
       CallCounter: CallCounter
-    'Models':
-      'Boards':
+    Models:
+      Serializer: Serializer
+      Boards:
         RectangleBoard: RectangleBoard
-      'Moves':
+      Moves:
         AbsolutePath: AbsolutePath
 

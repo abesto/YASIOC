@@ -1,4 +1,4 @@
-define ['fs', 'cs!./Client', 'cs!models/user', 'mootools'], (fs, Client, userModel) ->
+require ['fs', 'cs!./Client', 'cs!models/user'], (fs, Client, userModel) ->
   withClient = Client.withClient
 
   chatlog = (type, name, message) ->
@@ -13,15 +13,12 @@ define ['fs', 'cs!./Client', 'cs!models/user', 'mootools'], (fs, Client, userMod
       else if message.type == 'logout' then logtext = message.name + ' left'
     # Message
     else
-      logtext = message.from + ': ' + message.text;
+      logtext = message.from + ': ' + message.text
 
-    logfile.write('[' + (new Date()).toLocaleString() + '] ' + logtext + '\n');
+    logfile.write('[' + (new Date()).toLocaleString() + '] ' + logtext + '\n')
   # EOF chatlog
 
-  actions =
-    get:
-      defaultAction: 'index',
-      index: (req, res) -> res.render('chat')
+  app.get '/chat', (req, res) -> res.render 'chat'
 
     sio:
       initialize: withClient (client) ->
@@ -29,11 +26,11 @@ define ['fs', 'cs!./Client', 'cs!models/user', 'mootools'], (fs, Client, userMod
         if !client.userList('/chat/user-').contains(client.name)
           client.send 'announce', {type: 'login', name: client.name}, 'chat', 'public'
           chatlog 'public', 'default', {type: 'login', name: client.name}
-        client.join('user', client.name);
-        client.join('chat', 'public');
+        client.join('user', client.name)
+        client.join('chat', 'public')
 
       message: withClient (client, data) ->
-        data.from = client.name;
+        data.from = client.name
         if typeOf data.type == 'null' || data.type == 'shout'
           client.send 'message', data, 'chat', 'public'
           chatlog 'public', 'default', data

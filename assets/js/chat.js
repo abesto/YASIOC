@@ -1,4 +1,4 @@
-define(['order!lib/mootools', 'order!lib/mootools-more', '/socket.io/socket.io.js'], function() {
+define(['socket.io/socket.io.js'], function() {
   var socket = io.connect('/chat'), name, inited = false, ui;
 
   /* Simple caching HTML5 audio */

@@ -1,4 +1,4 @@
-define(['lib/mootools'], function() {
+define(function() {
   function filterSelector(nodename, property, fromValue, toValue) {
     if (typeOf(toValue) === 'null') toValue = fromValue;
     var value, selectors = [];
